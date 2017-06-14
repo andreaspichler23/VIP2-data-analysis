@@ -38,5 +38,7 @@ const static Int_t GroupSDD[NSDD] = {   // 1 for A side, 2 for B side in SIDDHAR
     1, 1, 1, 2, 2, 2
 };
 
+const static Int_t AdcCuts[6] = { 320, 300, 320, 290, 280, 270};
+
 #endif
 

@@ -459,7 +459,7 @@ Int_t SDDclass::FitTiMn( Bool_t saveflag )
         hcal->GetXaxis()->SetRangeUser( ll, ul);
         c1->Update();
 
-        status = hcal->Fit("fcnFit", "RIE"); // here the magic (fit) happens --------
+        status = hcal->Fit("fcnFit", "RIE"); // here the magic (fit) happens -------- 
     //    cout << "Fit done!!!!" << endl << endl;
         fcnFit->GetParameters(pfit);
         chi2 = fcnFit->GetChisquare();

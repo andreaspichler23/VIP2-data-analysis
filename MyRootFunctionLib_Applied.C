@@ -30,6 +30,277 @@
 
 #include  "MyRootFunctionLib_Basic.C"
 
+void CheckBackground( TString rootfile,  TString place, Int_t divider, Int_t part, Int_t complete, Int_t constFracTime, Int_t sec_rootfile){
+    
+    // if complete == 1 .... the whole rootfile is looked at; 
+    // if constFracTime == 1 the file is divided into bits with about 6 hours or so; the part needs to be taken care of manually that it does not happen that part > divider
+    // if sec_rootfile == -1 ... the duration of the complete rootfile is calculated with getruntime(); else sec_rootfile should be the duration of the complete rootfile in seconds
+    // rootfile_loop_count == 1 ... rootfile is openend; number gives the count of loops over the parts of this rootfile
+    // slope and offset are calculated from the complete root file, as the 5 hour pieces might not be enough to make a calibration
+    
+    ofstream logfile;   
+    TString logfileName = ANALYSIS_PATH + "/logfile.txt";
+    
+    //cout << logfileName << endl;
+    
+    logfile.open(logfileName,std::ofstream::app);
+    
+    Int_t sec_duration, sec_duration_total, hour_duration;
+    Double_t slope[6], offset[6];
+    Int_t sdd;
+    Int_t adc_channel;
+    Int_t* ind_array;
+    Int_t lbound_ind = 0;
+    Int_t ubound_ind = 0;
+    Double_t bin_ev[6];
+    Int_t coinc_counter = 0;
+    Double_t coinc_frac;
+    
+    Double_t avg_rate_bg[6] = {0.0082, 0.011, 0.008, 0.0062, 0.0083, 0.0074};
+    
+    Int_t hours_target, hours_rootfile;
+    
+    hours_target = 5;
+    
+    Int_t lbound_source = 4000;
+    Int_t ubound_source = 6700;
+    Int_t counter_source[6] = {0};
+    Double_t rate_source[6] = {0};
+    
+    Int_t lbound_bg = 7000;
+    Int_t ubound_bg = 30000;
+    Int_t counter_bg[6] = {0};
+    Double_t rate_bg[6] = {0};
+    
+    Int_t lbound_he = 30000;
+    Int_t ubound_he = 70000;
+    Int_t counter_he[6] = {0};
+    Double_t rate_he[6] = {0};
+    
+    EventStruct  evt_r;
+
+    Int_t size = place.Sizeof();
+    TString rootfilename;
+
+    if(size==4)rootfilename = ROOT_PATH_SMI + "/" + rootfile;
+    if(size==5)rootfilename = ROOT_PATH_LNGS + "/" + rootfile;
+    
+    if( sec_rootfile == -1 ){sec_duration_total = GetRunTime(rootfile, place, 1, 1, 1);}
+    else( sec_duration_total = sec_rootfile );
+    
+    
+    hours_rootfile = (int) sec_duration_total / 3600;
+    
+    if( constFracTime == 1 ) { divider = (int) hours_rootfile / hours_target; }
+    
+    sec_duration = GetRunTime(rootfile, place, divider, part, complete);
+
+    
+    for( sdd = 1; sdd < 7; sdd++  ){
+    
+        slope[sdd-1] = GetSlope(rootfile, place, sdd);
+        offset[sdd-1] = GetOffset(rootfile, place, sdd);
+    
+    }
+
+    
+    //TFile *f;
+    TFile *f = TFile::Open(rootfilename, "READ");
+    //if( rootfile_loop_count == 1 ){
+    //TFile  *f = new TFile(rootfilename,"read");
+        //cout << " OPENING ROOT FILE" << endl;
+    //}
+    
+    TTree *tree = (TTree*)f->Get("tr");
+    
+    TBranch *adcEvent   = tree->GetBranch("adc");
+    TBranch *timeEvent  = tree->GetBranch("time"); 
+    TBranch *trgidEvent = tree->GetBranch("trgid");
+    
+    adcEvent->SetAddress(evt_r.padc);
+    timeEvent->SetAddress(evt_r.time);
+    trgidEvent->SetAddress(&evt_r.trgid);
+    
+    Int_t nEvent = tree->GetEntries();
+    
+    if( part > divider ){ cout << " PART > DIVIDER; THIS SHOULD NOT BE !!!"  << endl; goto end;}
+    
+    if( complete == 1 || divider == 1){ lbound_ind = 1; ubound_ind = nEvent; }
+    else{ ind_array =  GetTreeDivisionIndices(rootfile, place, divider, part); 
+  
+        lbound_ind = ind_array[0];
+        ubound_ind = ind_array[1];
+  
+    }
+    
+    for(Int_t i = lbound_ind; i <= ubound_ind; i++){
+        
+        adcEvent->GetEntry(i);
+        trgidEvent->GetEntry(i);
+        
+        if( evt_r.trgid > 2 ){ coinc_counter += 1; }
+        
+        for( sdd = 1; sdd < 7; sdd++  ){
+            
+            adc_channel = SDDToPadc[sdd];
+            
+            bin_ev[sdd-1] = evt_r.padc[adc_channel] * slope[sdd-1] + offset[sdd-1];
+        
+            if( bin_ev[sdd-1] > lbound_source &&  bin_ev[sdd-1] < ubound_source){ counter_source[sdd-1] += 1; }
+            if( bin_ev[sdd-1] > lbound_bg &&  bin_ev[sdd-1] < ubound_bg)        { counter_bg[sdd-1] += 1;     }
+            if( bin_ev[sdd-1] > lbound_he &&  bin_ev[sdd-1] < ubound_he)        { counter_he[sdd-1] += 1;     }
+        
+        }
+        
+    }
+    
+    coinc_frac = (float)coinc_counter / (float)(ubound_ind - lbound_ind);
+    
+    if( coinc_frac > 0.025 ){ 
+        
+        cout << " HIGH rejection rate: " << coinc_frac << endl;
+        
+        timeEvent->GetEntry(lbound_ind);              
+        cout << " START: year: " << evt_r.time[0] << " month: " <<  evt_r.time[1] << " day: " << evt_r.time[2] << " hour: " << evt_r.time[3] << " minute: " << evt_r.time[4] << endl;
+            
+        timeEvent->GetEntry(ubound_ind); 
+        cout << " END: year: " << evt_r.time[0] << " month: " <<  evt_r.time[1] << " day: " << evt_r.time[2] << " hour: " << evt_r.time[3] << " minute: " << evt_r.time[4] << endl;
+        
+        logfile << " HIGH rejection rate: " << coinc_frac << endl;
+        
+        timeEvent->GetEntry(lbound_ind);              
+        logfile << " START: year: " << evt_r.time[0] << " month: " <<  evt_r.time[1] << " day: " << evt_r.time[2] << " hour: " << evt_r.time[3] << " minute: " << evt_r.time[4] << endl;
+            
+        timeEvent->GetEntry(ubound_ind); 
+        logfile << " END: year: " << evt_r.time[0] << " month: " <<  evt_r.time[1] << " day: " << evt_r.time[2] << " hour: " << evt_r.time[3] << " minute: " << evt_r.time[4] << endl;
+    
+    }
+    
+    for( sdd = 1; sdd < 7; sdd++ ){
+        
+        rate_source[sdd-1] = (float)counter_source[sdd-1] / (float)sec_duration;
+        rate_bg[sdd-1] = (float)counter_bg[sdd-1] / (float)sec_duration;
+        rate_he[sdd-1] = (float)counter_he[sdd-1] / (float)sec_duration;
+
+        
+        if( rate_bg[sdd-1] > (avg_rate_bg[sdd-1] * 1.5) ){
+            
+            cout << "SDD: " << sdd << " source rate: " << rate_source[sdd-1] << " bg rate: " << rate_bg[sdd-1] << " high energy rate: " << rate_he[sdd-1] << endl;
+            
+            timeEvent->GetEntry(lbound_ind);              
+            cout << " START: year: " << evt_r.time[0] << " month: " <<  evt_r.time[1] << " day: " << evt_r.time[2] << " hour: " << evt_r.time[3] << " minute: " << evt_r.time[4] << endl;
+            
+            timeEvent->GetEntry(ubound_ind); 
+            cout << " END: year: " << evt_r.time[0] << " month: " <<  evt_r.time[1] << " day: " << evt_r.time[2] << " hour: " << evt_r.time[3] << " minute: " << evt_r.time[4] << endl;
+            
+            logfile << "SDD: " << sdd << " source rate: " << rate_source[sdd-1] << " bg rate: " << rate_bg[sdd-1] << " high energy rate: " << rate_he[sdd-1] << endl;
+            
+            timeEvent->GetEntry(lbound_ind);              
+            logfile << " START: year: " << evt_r.time[0] << " month: " <<  evt_r.time[1] << " day: " << evt_r.time[2] << " hour: " << evt_r.time[3] << " minute: " << evt_r.time[4] << endl;
+            
+            timeEvent->GetEntry(ubound_ind); 
+            logfile << " END: year: " << evt_r.time[0] << " month: " <<  evt_r.time[1] << " day: " << evt_r.time[2] << " hour: " << evt_r.time[3] << " minute: " << evt_r.time[4] << endl;
+        }
+    
+    }
+    
+    cout << endl;
+    end:
+    logfile.close();
+    f->Close();
+    delete f;
+    
+    return;
+    
+    
+}
+
+void CheckBackgroundFile(TString rootfile,  TString place, Int_t divider, Int_t constFracTime){
+    
+    // constFracTime = 1 ... divider is newly calculated from the length of the rootfile and the target length of 1 part of "hours-target"; hours also needs to be reset in CheckBackground function!!
+    // else: divider parameter is taken
+    
+    Int_t sec_duration_total;
+    Int_t hours_target = 5;
+    Int_t hours_rootfile;
+    
+    
+    
+    if( constFracTime == 1 ){
+        
+        sec_duration_total = GetRunTime(rootfile, place, 1, 1, 1);
+    
+        hours_rootfile = (int) sec_duration_total / 3600;
+        
+        divider = (int) hours_rootfile / hours_target;
+        
+    }
+    
+    //cout << "divider: " << divider << endl;
+    
+    for( Int_t part = 1; part <= divider; part ++ ){
+        
+        
+        CheckBackground( rootfile,  place, divider, part, 0, constFracTime, sec_duration_total);
+        
+    }
+    
+    return;
+    
+}
+
+void CheckBackgroundFilelist(TString filelistFile){
+    
+    
+    FILE  *flist;
+    //Int_t size = place.Sizeof();
+
+    if( (flist = fopen(LIST_PATH + "/" +filelistFile, "r")) == NULL ){
+        cout << "Cannot open file: " << filelistFile << endl;
+    }
+
+    cout << filelistFile << endl; // filelistFile is the name of the file which contains a list of strings, which correspond with a ".list" ending to the filenames of the files which include a list of 
+    //binary files (already existing), and with a ".root ending to the root files
+
+    char  listline[MAXCHAR];
+    char  file_name[MAXCHAR];
+    //string listline;
+    
+    TString rootfilename;
+    TString filelist;
+    TString filename_tstring;
+
+    
+    while( fgets(listline, MAXCHAR, flist) != NULL){ // reads MAXCHAR = 512 characters (or until newline in our case) from flist (pointer to filestream from file with names of all file lists) and stores it to listline
+        // listline is now a one string in the filelistFile with a newline!
+     
+        
+        
+        sscanf( listline, "%s\n", file_name ); // stores listline to file_name -> necessary bc listline contains newlines
+        cout << file_name << endl;
+        
+        filename_tstring = TString(file_name);
+        
+        rootfilename = filename_tstring + ".root";
+        
+        
+        //cout << rootfilename << " " << filelist << endl;
+        
+        CheckBackgroundFile(rootfilename,  "lngs", 1, 1);
+
+        //cout << "Return value : " << read_status << endl << endl;
+        cout << endl << endl << endl;
+    }
+    
+    fclose(flist);
+    return;
+    
+    
+}
+
+//void CheckBackgroundLoop(TString rootfile, )
+
+
 
 void WriteParts2Rootfile(TString rootfile, TString place, Int_t adc_channel, Int_t divider, Int_t part){
 
@@ -736,7 +1007,7 @@ void AnalyseSpectrum(TString rootfile, TString place, Int_t sdd){
 
 
 
-  TH1F *histo_unsalced;
+  TH1F *histo_unscaled;
   histo_unscaled = HistoFromTree(rootfile, place, sdd);
   TAxis *axis_unscaled = histo_unscaled->GetXaxis();
 
@@ -791,6 +1062,7 @@ void AnalyseSpectrum(TString rootfile, TString place, Int_t sdd){
 
 void GetRateParts(TString rootfile, Int_t divider, TString place){
 
+    // prints average rate in all int divider parts of the rootfile 
   Int_t size = place.Sizeof();
   TString rootfilename;
 

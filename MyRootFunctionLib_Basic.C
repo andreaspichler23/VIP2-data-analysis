@@ -53,7 +53,8 @@ TH1F* HistoFromTree(TString rootfile, TString place, Int_t sdd){ // not working 
 
   //cout << rootfilename << endl;
 
-  TFile *f = new TFile(rootfilename, "READ");
+  //TFile *f = new TFile(rootfilename, "READ");
+  TFile *f = TFile::Open(rootfilename, "READ");
   TTree *tree = (TTree*)f->Get("tr");
   
   TBranch *adcEvent;
@@ -77,8 +78,16 @@ TH1F* HistoFromTree(TString rootfile, TString place, Int_t sdd){ // not working 
     spect->Fill(evt_r.padc[adc_channel]);
  
   }
+  
+  spect->SetDirectory(0); // to decouple it from the open file directory -> otherwise when you close the rootfile, the histogram is also gone
+  
+  f->Close();
+  delete f;
+  //spect->Draw();
 
   //cout << 3;
+  
+  
  return spect;
 
 }
@@ -86,7 +95,9 @@ TH1F* HistoFromTree(TString rootfile, TString place, Int_t sdd){ // not working 
 Double_t GetOffset(TString rootfile, TString place, Int_t sdd){
 
   TH1F *histo;
+  
   histo = HistoFromTree(rootfile, place, sdd);
+  
   histo -> GetXaxis()->SetRangeUser(200,3000);
   
 
@@ -113,11 +124,14 @@ Double_t GetOffset(TString rootfile, TString place, Int_t sdd){
 Double_t GetSlope(TString rootfile, TString place, Int_t sdd){
 
   TH1F *histo;
+  
   histo = HistoFromTree(rootfile, place, sdd);
+
   histo -> GetXaxis()->SetRangeUser(200,3000);
   
 
   TSpectrum *s = new TSpectrum();
+
   s->Search(histo, 2, "nodraw", 0.05 );  // 2. attribute is sigma                    
 
   Int_t peakN = s->GetNPeaks();
@@ -133,7 +147,7 @@ Double_t GetSlope(TString rootfile, TString place, Int_t sdd){
  
   Double_t slope = (MnKa1-TiKa1)/(pX[idx[2]]-pX[idx[0]]);
   Double_t offset = TiKa1 - slope * pX[idx[0]];
-
+  
   return slope;
 
 }
@@ -141,6 +155,8 @@ Double_t GetSlope(TString rootfile, TString place, Int_t sdd){
 int* GetTreeDivisionIndices(TString rootfile, TString place, Int_t divider, Int_t part){
 
 // this function returns start and end indices for a part of the given rootfile on the base of the Mn k-alpha count rate of SDD 1
+    
+  
 
   Double_t slope;
   Double_t offset;
@@ -154,10 +170,12 @@ int* GetTreeDivisionIndices(TString rootfile, TString place, Int_t divider, Int_
   Int_t size = place.Sizeof();
   TString rootfilename;
 
+  
   if(size==4)rootfilename = ROOT_PATH_SMI + "/" + rootfile;
   if(size==5)rootfilename = ROOT_PATH_LNGS + "/" + rootfile;
 
-  TFile *f = new TFile(rootfilename, "READ");
+  //TFile *f = new TFile(rootfilename, "READ");
+  TFile *f = TFile::Open(rootfilename, "READ");
   TTree *tree = (TTree*)f->Get("tr");
 
   TBranch *adcEvent   = tree->GetBranch("adc");
@@ -181,7 +199,9 @@ int* GetTreeDivisionIndices(TString rootfile, TString place, Int_t divider, Int_
 
  Int_t mn_event_lb = (part - 1) * mn_counter/divider;
  Int_t mn_event_ub = part * mn_counter/divider;
-
+ 
+ if( part > divider ){ cout << " PART > DIVIDER; THIS SHOULD NOT BE !!!"  << endl; goto end;}
+ 
  mn_counter = 0;
 
  for( Int_t j = 0; j < nevent; j++ ){
@@ -198,13 +218,18 @@ int* GetTreeDivisionIndices(TString rootfile, TString place, Int_t divider, Int_
  }
 
 // cout<< nevent << " " << ind_array[0] << " " << ind_array[1] << endl;
+ end:
+ f->Close();
+ delete f;
+ 
+ 
  return ind_array;
 
 }
 
 
 
-Int_t GetRunTime(TString rootfile, TString place){
+Int_t GetRunTime(TString rootfile, TString place, Int_t divider, Int_t part, Int_t complete){
 
 // this function returns the runtime of the given rootfile on the base of the Labview millisecond clock - it goes through the events event by event and looks at the ms time tags
 // these time tags should be steadily rising
@@ -215,6 +240,9 @@ Int_t GetRunTime(TString rootfile, TString place){
 // once the clock reaches the upper limit it resets back to the negative limit
 // useful: tr->Draw("evid:clk>>htmp(1000,0,1000000000,1000,0,50000)") .... limits for ms clock to be changed
 
+    
+    // update: switch to milliseconds as the time unit 
+    //update 2: switch to being able to get run time of parts of the rootfile
 
   /*Double_t slope;
   Double_t offset;
@@ -229,6 +257,11 @@ Int_t GetRunTime(TString rootfile, TString place){
   Int_t fail_counter = 0;
   Int_t t_gap;
  
+  Int_t* ind_array;
+  
+  
+  Int_t lbound = 0;
+  Int_t ubound = 0;
 
   EventStruct  evt_r;
 
@@ -238,7 +271,8 @@ Int_t GetRunTime(TString rootfile, TString place){
   if(size==4)rootfilename = ROOT_PATH_SMI + "/" + rootfile;
   if(size==5)rootfilename = ROOT_PATH_LNGS + "/" + rootfile;
 
-  TFile *f = new TFile(rootfilename, "READ");
+  //TFile *f = new TFile(rootfilename, "READ");
+  TFile *f = TFile::Open(rootfilename, "READ");
   TTree *tree = (TTree*)f->Get("tr");
 
   //TBranch *adcEvent   = tree->GetBranch("adc");
@@ -247,34 +281,43 @@ Int_t GetRunTime(TString rootfile, TString place){
   TBranch *clkEvent   = tree->GetBranch("clk");
   clkEvent->SetAddress(&evt_r.clk);
 
-  clkEvent->GetEvent(0);
-  sec_buffer = (int)evt_r.clk/1000 - 1;
-
+  
+  //cout << "starting time: " << sec_buff << endl;
 
   Int_t nevent = tree->GetEntries();
+  
+  if( complete == 1 ){ lbound = 1; ubound = nevent; }
+  if( complete == 0 ){ ind_array =  GetTreeDivisionIndices(rootfile, place, divider, part); 
+  
+    lbound = ind_array[0];
+    ubound = ind_array[1];
+  
+  }
+  
+  clkEvent->GetEvent(lbound);
+  sec_buff = (int)evt_r.clk/1000 - 1;
+  
 
+  //cout << "lbound: " << lbound << " ubound: " << ubound << " nevent: " << nevent << endl;
 
-  for( Int_t i = 0; i < nevent; i++){
+  for( Int_t i = lbound; i <= ubound; i++){
 
-     clkEvent->GetEvent(i);
-     sec_curr = (int)evt_r.clk/1000; // second of current event
+    clkEvent->GetEvent(i);
+    sec_curr = (int)evt_r.clk/1000; // second of current event
 
-     if( sec_curr != sec_buff ){ 
+     
 
-	t_gap = sec_curr - sec_buff;
-        //cout << i << endl;		
+    t_gap = sec_curr - sec_buff;
+    //cout << i << endl;		
 
-        if( t_gap < 0 ) { fail_counter += 1; //cout << "ms clock is going down at " << sec_curr << " " << sec_buff << endl;
-        }
-	if( t_gap > 0 && t_gap < 10 ) sec_counter += t_gap; 
-        if( t_gap > 10 && i != 0){ fail_counter += 1; 
-	cout << "BIG GAP at " << sec_curr << " " << sec_buff << endl;
-        }
-	  
-
-	sec_buff = sec_curr;
-      }     
-
+    if( t_gap < 0 ) { fail_counter += 1;// cout << "BIG jump backward at: sec previous: " << sec_buff << " sec current: " << sec_curr << endl;
+    }
+    if( t_gap > 0 && t_gap < 10 ) {sec_counter += t_gap; }
+    if( t_gap > 10 && i != 0){ fail_counter += 1; 
+	//cout << "BIG jump forward at: sec previous: " << sec_buff << " sec current: " << sec_curr << endl;
+    }
+    
+    sec_buff = sec_curr;  
 
   }
 
@@ -301,16 +344,19 @@ Int_t GetRunTime(TString rootfile, TString place){
  sec = ti_counter / ti_rate;
  */
 
- sec = sec_counter;
- cout << "The duration of this rootfile is approx " << sec << " seconds" << endl;
+ sec = (int)sec_counter/1;
+ //cout << "The duration of this rootfile is approx " << sec << " seconds" << endl;
  day  = (Int_t)sec/(86400);
  hour = (Int_t)(sec - (day * 86400))/(3600);
  min  = (Int_t)(sec - (day * 86400 + hour * 3600))/(60);
 
- cout << "That is about " <<  day << " days, " << hour << " hours, " << min << " minutes" << endl;
- cout << "Also there were around " << fail_counter << " events with no ms clock timing information or big gaps between events" << endl;
+ //cout << "That is about " <<  day << " days, " << hour << " hours, " << min << " minutes" << endl;
+ //cout << "Also there were around " << fail_counter << " events with no ms clock timing information or big gaps between events" << endl;
 
  sec = (Int_t)sec;
+ 
+ f->Close();
+ delete f;
  return sec;
 
 }
@@ -1481,6 +1527,7 @@ void AnalyseTDCHitPattern(TString rootfile, TString place){
 
 Double_t GetRate(TString rootfile, Int_t lbound, Int_t ubound, TString place){
 
+  // returns the rate averaged over all the rates of the events in the rootfile from event number lbound to event number ubound
   Int_t size = place.Sizeof();
   TString rootfilename;
 

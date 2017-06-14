@@ -29,8 +29,9 @@ const static Float_t NSECTDCCH       = 0.1;  // with pair mode before 2014 02 25
 //const static Int_t   NSiPM    = 64;   // For final setup
 const static Int_t   NSiPM    = 32;   // For test setup of Phase one
 const static Int_t   NScinti  = 32;   // For final setup
-const static Int_t   NPADC_CH = 32;   
-const static Int_t   ENABLED_NPADC_CH = 16;   
+const static Int_t   NPADC_CH = 32;
+const static Int_t   ENABLED_TDC_CH = 16;
+const static Int_t   ENABLED_PADC_CH = 16;   
 const static Int_t   NCHIP    = 1;    // Number of SDD chip
 const static Int_t   NARRAY   = 2;    // Two arrays each with 3 SDDs
 const static Int_t   NSDD     = 6;    // For Phase one setup
@@ -55,6 +56,8 @@ const static TString  WORK_PATH  = "/home/andreas/vip2";
 const static TString  GRAPH_PATH = WORK_PATH + "/graphs";
 const static TString  DATA_PATH  = WORK_PATH + "/data";
 const static TString  LIST_PATH  = WORK_PATH + "/filelist";
+const static TString  LIST_PATH_LNGS  = WORK_PATH + "/filelist/LNGS";
+const static TString  LIST_PATH_SMI  = WORK_PATH + "/filelist/SMI";
 const static TString  TXT_PATH   = DATA_PATH + "/txt";
 const static TString  BIN_PATH_SMI   = DATA_PATH + "/bin/SMI";
 const static TString  ROOT_PATH  = DATA_PATH + "/root";
@@ -63,6 +66,7 @@ const static TString  SLOW_ROOT_PATH  = DATA_PATH + "/slow/root";
 const static TString  BIN_PATH_LNGS   = DATA_PATH + "/bin/LNGS";
 const static TString  ROOT_PATH_LNGS  = DATA_PATH + "/root/LNGS";
 const static TString  ROOT_PATH_SMI  = DATA_PATH + "/root/SMI";
+const static TString  ANALYSIS_PATH = WORK_PATH + "/reports/Analysis";
 
 
 
