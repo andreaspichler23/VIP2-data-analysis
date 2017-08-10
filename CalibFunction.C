@@ -600,25 +600,7 @@ Double_t TiMnFullFitFunc(Double_t *x, Double_t *par)
     Double_t sig_tTiKa1    = sqrt( slope * ttika1m* SiW * par[3] + par[4] * par[4] );
     Double_t sig_tTiKa2    = sqrt( slope * ttika2m* SiW * par[3] + par[4] * par[4] );
     Double_t sig_tTiKb     = sqrt( slope * ttikbm * SiW * par[3] + par[4] * par[4] );
-/*
-    Double_t caka2m        = par[22] - (CaKa1 - CaKa2) * slope;// par[22]=init mean ca; par[24]=init mean kb
-    Double_t pcaka1m       = par[22] + par[15] * slope; // --------------------
-    Double_t pcaka2m       = caka2m + par[15] * slope;
-    Double_t pcakbm        = par[24]+ par[15] * slope; // --------------------
-    Double_t tcaka1m       = par[22] - par[17] * slope;
-    Double_t tcaka2m       = caka2m - par[17] * slope;
-    Double_t tcakbm        = par[24]- par[17] * slope;
 
-    Double_t sig_CaKa1     = sqrt( slope * par[22] * SiW * par[3] + par[4] * par[4] );
-    Double_t sig_CaKa2     = sqrt( slope * caka2m * SiW * par[3] + par[4] * par[4] );
-    Double_t sig_CaKb      = sqrt( slope * par[24]* SiW * par[3] + par[4] * par[4] );
-    Double_t sig_pCaKa1    = par[18] * sqrt( slope * pcaka1m* SiW * par[3] + par[4] * par[4] );
-    Double_t sig_pCaKa2    = par[18] * sqrt( slope * pcaka2m* SiW * par[3] + par[4] * par[4] );
-    Double_t sig_pCaKb     = par[18] * sqrt( slope * pcakbm * SiW * par[3] + par[4] * par[4] );
-    Double_t sig_tCaKa1    = sqrt( slope * tcaka1m* SiW * par[3] + par[4] * par[4] );
-    Double_t sig_tCaKa2    = sqrt( slope * tcaka2m* SiW * par[3] + par[4] * par[4] );
-    Double_t sig_tCaKb     = sqrt( slope * tcakbm * SiW * par[3] + par[4] * par[4] );
-*/
     if( sig_TiKa1 * sig_TiKa2 * sig_TiKb * sig_MnKa1 * sig_MnKa2 * sig_MnKb 
           //  * sig_CaKa1 * sig_CaKa2 * sig_CaKb 
           //  * sig_pTiKa1 * sig_pTiKa2 * sig_pTiKb  * sig_pMnKa1 * sig_pMnKa2 * sig_pMnKb  
@@ -727,22 +709,12 @@ Double_t TiMnFullFitFunc(Double_t *x, Double_t *par)
             + par[10] * par[17]  * MnKa2_RI / MnKa1_RI * normmnka2 * TMath::Exp(argmnka2B1) * TMath::Erfc(arg[18] + argmnka2B2)
             + par[10] * par[18]  * par[12] * normmnkb * TMath::Exp(argmnkbB1) * TMath::Erfc(arg[19] + argmnkbB2) 
 
-/*
-            + par[23] / sig_CaKa1* TMath::Exp(-0.5 * arg[24] * arg[24])
-            + CaKa2_RI/ CaKa1_RI * par[23] / sig_CaKa2 * TMath::Exp(-0.5 * arg[25] * arg[25])
-            + par[25] * par[23]  / sig_CaKb * TMath::Exp(-0.5 * arg[26] * arg[26])
-            + par[16] * par[23]  / sig_pCaKa1 * TMath::Exp(-0.5 * arg[27] * arg[27])
-            + par[16] * par[23]  * CaKa2_RI / CaKa1_RI / sig_pCaKa2 * TMath::Exp(-0.5 * arg[28] * arg[28])
-            + par[16] * par[23]  * par[25] / sig_pCaKb * TMath::Exp(-0.5 * arg[29] * arg[29])
-            + par[23] * par[26]  * normcaka1 * TMath::Exp(argcaka1B1) * TMath::Erfc(arg[30] + argcaka1B2)
-            + par[23] * par[26]  * CaKa2_RI / CaKa1_RI * normcaka2 * TMath::Exp(argcaka2B1) * TMath::Erfc(arg[31] + argcaka2B2)
-            + par[23] * par[26]  * par[25] * normcakb * TMath::Exp(argcakbB1) * TMath::Erfc(arg[32] + argcakbB2)
-*/
-            + par[13] * par[10]  / sig_MnKa1e * TMath::Exp(-0.5 * arg[6] * arg[6]) // Escape peaks ... ka1
-            + par[13] * par[10]  / sig_MnKa2e * TMath::Exp(-0.5 * arg[7] * arg[7])
-            + par[13] * par[10]  / sig_MnKbe  * TMath::Exp(-0.5 * arg[20]* arg[20]) 
 
-            + par[13] * par[6]  / sig_TiKa1e * TMath::Exp(-0.5 * arg[21] * arg[21])
+            + par[13] * par[10]  / sig_MnKa1e * TMath::Exp(-0.5 * arg[6] * arg[6]) // Escape peak ... mn ka1
+            + par[13] * par[10]  / sig_MnKa2e * TMath::Exp(-0.5 * arg[7] * arg[7]) // Escape peak ... mn k2
+            + par[13] * par[10]  / sig_MnKbe  * TMath::Exp(-0.5 * arg[20]* arg[20])  // Escape peak ... mn kb
+
+            + par[13] * par[6]  / sig_TiKa1e * TMath::Exp(-0.5 * arg[21] * arg[21]) // escape peaks ti
             + par[13] * par[6]  / sig_TiKa2e * TMath::Exp(-0.5 * arg[22] * arg[22])
             + par[13] * par[6]  / sig_TiKbe  * TMath::Exp(-0.5 * arg[23] * arg[23])
 
@@ -1063,9 +1035,9 @@ Double_t TiMnCuFullFitFunc(Double_t *x, Double_t *par)
             + par[23] * par[26]  * CuKa2_RI / CuKa1_RI * normcuka2 * TMath::Exp(argcuka2B1) * TMath::Erfc(arg[31] + argcuka2B2) // cu ka2 tail
             + par[23] * par[25]  * par[26] * normcukb * TMath::Exp(argcukbB1) * TMath::Erfc(arg[32] + argcukbB2) // cu kb tail
 
-            + par[13] * par[23]  / sig_MnKa1e * TMath::Exp(-0.5 * arg[6] * arg[6]) // Escape peak ... mn ka1
-            + par[13] * par[23]  / sig_MnKa2e * TMath::Exp(-0.5 * arg[7] * arg[7]) // mn ka 2
-            + par[13] * par[23]  / sig_MnKbe  * TMath::Exp(-0.5 * arg[20]* arg[20]) // mn kb
+            + par[13] * par[10]  / sig_MnKa1e * TMath::Exp(-0.5 * arg[6] * arg[6]) // Escape peak ... mn ka1
+            + par[13] * par[10]  / sig_MnKa2e * TMath::Exp(-0.5 * arg[7] * arg[7]) // mn ka 2
+            + par[13] * par[10]  / sig_MnKbe  * TMath::Exp(-0.5 * arg[20]* arg[20]) // mn kb
 
 
             + par[13] * par[6]  / sig_TiKa1e * TMath::Exp(-0.5 * arg[21] * arg[21]) // escape peak ti ka1

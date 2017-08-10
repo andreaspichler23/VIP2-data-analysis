@@ -1,8 +1,4 @@
-/*****************************************
-               SDDcalib.C
-               Aug. 2014
-                 H. Shi
-******************************************/
+
 #include  <stdlib.h>
 #include  <stdio.h>
 #include  <iostream>
@@ -13,10 +9,11 @@
 #include  "SDDcalib.h"
 #include  "common.h"
 
+
 using namespace std;
 
 
-void SingleSDDCalib( ID nSDD,  ID nPADC,  TString rootf, TString source, TString place )
+void CalibMacro( ID nSDD,  ID nPADC,  TString rootf, TString source, TString place )
 {
 
     Bool_t   saveflag = kTRUE,  saveplot = kFALSE;
@@ -26,8 +23,7 @@ void SingleSDDCalib( ID nSDD,  ID nPADC,  TString rootf, TString source, TString
     //logfile.open(WORK_PATH + "/reports/Analysis/logifle.txt",ios::app);
     //datafile.open(WORK_PATH + "/reports/Analysis/BestTimeForRootfile/01day-datafile.txt",ios::app);
     datafile.open(WORK_PATH + "/calibrationlist/1-618Files-LNGS.txt",ios::app);
-    TString fileNamePart = rootf(20,3);
-    //cout << fileNamePart << endl;
+    TString fileNamePart = rootf(20,3); // change here!! 
     Int_t fileNumber = fileNamePart.Atoi();
 
     Int_t    fstatus,  ndf;  
@@ -117,7 +113,7 @@ void SingleSDDCalib( ID nSDD,  ID nPADC,  TString rootf, TString source, TString
         */
     }
 
-    //sdd->CloseCanvas( saveplot );
+    sdd->CloseCanvas( saveplot );
     if( fstatus != 9 ){              // When histogram fit was done.
         sdd->CloseRootFile();   
     }
@@ -129,50 +125,4 @@ void SingleSDDCalib( ID nSDD,  ID nPADC,  TString rootf, TString source, TString
     cout << "# END of one run for one SDD" << endl;
 
     return; 
-}
-
-void PhaseOneCalib( TString rootf,  TString source, TString place  )
-{
-    Int_t adc_channel[6] = {0,2,3,5,6,7};
-
-    for( Int_t sdd=1; sdd<7; sdd++ ){
-        SingleSDDCalib( sdd, adc_channel[sdd-1], rootf, source, place );
-    }
-
-    return; 
-}
-
-
-void PhaseOneCalibLoop( TString source, Int_t startRootfile , Int_t maxRootfiles ){
-    
-    TString rootFilename;
-    
-    // pay attention that you analyze the correct root file!!! -> rootfilename!!
-    // this is for the analysis for the best time for the root file
-    
-//    for( Int_t rootfilenumber = 1; rootfilenumber <= maxRootfiles; rootfilenumber++ ){
-//        
-//        rootFilename = Form( "01day-parts/2noCurrent_%d.root", rootfilenumber);
-//    
-//        PhaseOneCalib( rootFilename, source, "lngs" );
-//        
-//    }
-    // this is for the actual rootfiles
-    TString fileName;
-    ifstream fileList;
-    fileList.open("/home/andreas/vip2/filelist/1-618Files-LNGS.txt");
-    
-    for( Int_t rootFilenumber = 1; rootFilenumber <= maxRootfiles; rootFilenumber++ ){
-        
-        fileList >> fileName;
-        rootFilename = "1-618files-original/" + fileName + ".root";
-        //cout << rootFilename << endl;
-        if( rootFilenumber < startRootfile ){ continue; }
-        
-        PhaseOneCalib( rootFilename, source, "lngs" );
-        
-    }
-    
-    fileList.close();
-    
 }

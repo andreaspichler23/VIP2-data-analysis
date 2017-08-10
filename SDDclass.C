@@ -73,7 +73,7 @@ SDDclass::~SDDclass(){
 
 void SDDclass::SetRootfile( TString run_name, TString place ) // name should be in format year-month-day
 {   
-    cout << "# In SDDclass::SetRootfile() ... " << endl;
+    cout << endl <<  "# In SDDclass::SetRootfile() ... " << endl;
 
     Int_t size = place.Sizeof();
 
@@ -89,8 +89,8 @@ void SDDclass::SetRootfile( TString run_name, TString place ) // name should be 
 
     tlabel = day * 1000000 + month * 10000 + year;
     cout << "# Calibration file : " << rootfile << endl;
-    TDatime daT(year, month, day, hra, mina, 0);
-    ut = daT.Convert();
+    //TDatime daT(year, month, day, hra, mina, 0);
+    //ut = daT.Convert();
 //    Int_t date = daT.GetDate();
     cout << "# tlabel,  ut  : " << tlabel << "   " << ut << endl << endl;
 
@@ -169,21 +169,61 @@ bool SDDclass::SearchPeak()
     cout << "p1 : " << pX[0] << " p2 : " << pX[1] << " p3 : " << pX[2] << " p4 : " << pX[3] << " p5 : " << pX[4] << endl;
 
 
-    if( peakN == 4 || peakN == 5){ // peakX[0] should be the Ti channel and peakX[1] the Mn/Cu channel
+    if(  peakN == 4 || peakN == 5){ // peakX[0] should be the Ti Ka channel and peakX[1] the Mn Ka channel
         if( pX[0] <= ul && pX[0] > ll ){
-	  if( pX[0] < pX[1] ){ // if Ti peak bigger than Mn/ Cu(in the case of X ray tube)
-            peakX[0] = pX[0];
-            peakY[0] = pY[0];
-            peakX[1] = pX[1];
-            peakY[1] = pY[1];
-	  }
-	  else{ // if Mn / Cu peak is bigger than Ti
+	  if( pX[0] < pX[1] ){ // if Ti ka > Mn Ka (normal case)
+              
+            if( (pX[1] > pX[2]) && (pX[1] < pX[3]) ){ // Mn Ka bigger than ti Kb (normal case) ... case 1
+                peakX[0] = pX[0];
+                peakY[0] = pY[0];
+                peakX[1] = pX[1];
+                peakY[1] = pY[1];
+            }
+            else if( (pX[1] > pX[2]) && (pX[1] > pX[3]) ){ //tika > mnkb > mnka > tikb legendary rare case 6
+                peakX[0] = pX[0];
+                peakY[0] = pY[0];
+                peakX[1] = pX[2];
+                peakY[1] = pY[2];
+                
+            }
+            else if( (pX[1] < pX[2]) && ( pX[2] < pX[3] ) ){ // ... and ti kb > than mn ka && mn ka > mn kb... case 2
+                peakX[0] = pX[0];
+                peakY[0] = pY[0];
+                peakX[1] = pX[2];
+                peakY[1] = pY[2]; 
+            }
+	    else if( (pX[1] < pX[2]) && (pX[2] > pX[3]) && (pX[3] < pX[1])){ // ... and mn ka > ti kb && mn kb > ti kb .... case 3
+                peakX[0] = pX[0];
+                peakY[0] = pY[0];
+                peakX[1] = pX[1];
+                peakY[1] = pY[1];
+
+	    }
+            else if( (pX[1] < pX[2]) && (pX[2] > pX[3]) && (pX[3] > pX[1])){ // ... and mn ka < ti kb && mn kb < ti kb  and mnka < mnkb (rare).... case 5
+                peakX[0] = pX[0];
+                peakY[0] = pY[0];
+                peakX[1] = pX[3];
+                peakY[1] = pY[3];
+
+	    }
+            else{ // strange
+                peakX[0] = pX[0];
+                peakY[0] = pY[0];
+                peakX[1] = pX[1];
+                peakY[1] = pY[1];
+                cout << endl << endl <<  " something strange in TSpectrum! " << endl << endl << endl;
+            }    
+          }
+          
+          else{ // mn ka > ti ka ... case 4
+              
             peakX[0] = pX[1];
             peakY[0] = pY[1];
             peakX[1] = pX[0];
             peakY[1] = pY[0];
-
-	  }
+            //cout << endl << endl <<  " something went wrong in TSpectrum! " << endl << endl << endl;
+              
+          }
         }
     }
 
@@ -261,7 +301,7 @@ Int_t SDDclass::FitTiMn( Bool_t saveflag )
     status = 0;          // Fit status:Return value of Fit. 0: converged; 4: abnormal termination
     chi2   = 0.;
     ndf    = 0;
-    rebin  = 4;
+    rebin  = 2;
 
     /// for tail ana /////
     ntiT   = 0.;
@@ -289,14 +329,17 @@ Int_t SDDclass::FitTiMn( Bool_t saveflag )
     ////////////////////
 
     if( k2Peaks == true ){
-        Double_t  l_bin = 350; // lower end of histogram
-        Double_t  u_bin = peakX[1] + 300.; // 300 channels above smaller of the 2 peaks - sets range for fitting of the main fit function
+        
         Double_t  ti_gain_setvalue = peakY[0] * rebin; // setting initial gains - but how/why so? - NUMERICAL ESTIMATION
         Double_t  mn_gain_setvalue = peakY[1] * rebin;
+        Double_t  bg_setvalue      = mn_gain_setvalue/1000;
  //       Double_t  ca_gain_setvalue = ti_gain_setvalue / 10; // ca gain is 1/10 of the ti gain... ok?!
         Double_t  init_mean_ti     = peakX[0] ;
         Double_t  init_mean_mn     = peakX[1] ;
         Double_t  slope            = ( init_mean_mn - init_mean_ti )/( MnKa1 - TiKa1 ); // inital slope in channels/eV 
+        
+        Double_t  l_bin = peakX[0] - 300.; // lower end of histogram
+        Double_t  u_bin = peakX[1] + 300.; // 300 channels above smaller of the 2 peaks - sets range for fitting of the main fit function
  //       Double_t  init_mean_ca     = (init_mean_ti+init_mean_mn)/2 - ((MnKa1+TiKa1)/2-CaKa1)*slope; // initial channel of Ca Kalpha
  //       Double_t  init_mean_cakb   = (init_mean_ti+init_mean_mn)/2 - ((MnKa1+TiKa1)/2-CaKb1_3)*slope;
 
@@ -354,7 +397,7 @@ Int_t SDDclass::FitTiMn( Bool_t saveflag )
         fcnFit->SetParName( 10, "MnKa1Gain ");
         fcnFit->SetParName( 11, "MnKbCh    ");
         fcnFit->SetParName( 12, "RMnKbKa   ");
-        fcnFit->SetParName( 13, "EscapeGain");         // Escape/MnKa Jun 23 2010
+        fcnFit->SetParName( 13, "EscapeGain");         
   //      fcnFit->SetParName( 14, "FeGain    ");
   //      fcnFit->SetParName( 15, "pShift    ");
   //      fcnFit->SetParName( 16, "pGainRa   ");
@@ -373,8 +416,8 @@ Int_t SDDclass::FitTiMn( Bool_t saveflag )
   //      fcnFit->SetParName( 26, "tGainCa   ");
         fcnFit->SetParName( 21, "shelfGain     ");
 
-        fcnFit->SetParameter(0, 1.);
-        fcnFit->SetParLimits(0, 0.,  100.);
+        fcnFit->SetParameter(0, bg_setvalue);
+        fcnFit->SetParLimits(0, 0.,  bg_setvalue*10);
         fcnFit->FixParameter(1, 0.);
         fcnFit->FixParameter(2, 0.);
         fcnFit->SetParameter(3, init_fano );           // FANO
@@ -406,14 +449,14 @@ Int_t SDDclass::FitTiMn( Bool_t saveflag )
         fcnFit->SetParameter(14, 50.);                 // Tail mean shift eV 
         fcnFit->SetParLimits(14, 0., 200.);           // lower limit 100 to 30. 22/02/2010
         fcnFit->SetParameter(13, 0.01);                 // Escape peak gain
-        fcnFit->SetParLimits(13, 0.0001, 0.05);
+        fcnFit->SetParLimits(13, 0.00001, 0.05);
         //fcnFit->FixParameter(18,  0.);
 
         fcnFit->SetParameter(15, 0.2);                 // Tail gain ratio ti Ka ---- set gains to 0.2 from 0.02
         fcnFit->SetParLimits(15, 0.001, 0.40);           // upper 0.2 to 0.60 
         //fcnFit->FixParameter(19,  0.);
         fcnFit->SetParameter(16, 0.2);                 // Tail gain ratio ti Kb
-        fcnFit->SetParLimits(16, 0.001, 0.55);          // upper 0.2 to 0.40 22/02/2010
+        fcnFit->SetParLimits(16, 0.001, 0.6);          // upper 0.2 to 0.40 22/02/2010
         fcnFit->SetParameter(17, 0.2);                 // Tail gain ratio mn Ka
         fcnFit->SetParLimits(17, 0.001, 0.40);           // upper 0.2 to 0.60 
         //fcnFit->FixParameter(19,  0.);
@@ -438,7 +481,7 @@ Int_t SDDclass::FitTiMn( Bool_t saveflag )
         fcnFit->SetParLimits(26, 0.001, 0.20);          // upper 0.2 to 0.40 
 */
         fcnFit->SetParameter(21, 0.001 );               // shelf gain ratio
-        fcnFit->SetParLimits(21, 0.0004, 0.05);
+       // fcnFit->SetParLimits(21, 0.0004, 0.05);
 
 
         //fcnFit->FixParameter(14, 0);
@@ -459,7 +502,9 @@ Int_t SDDclass::FitTiMn( Bool_t saveflag )
         hcal->GetXaxis()->SetRangeUser( ll, ul);
         c1->Update();
 
-        status = hcal->Fit("fcnFit", "RIE"); // here the magic (fit) happens -------- 
+        status = hcal->Fit("fcnFit", "R"); // here the magic (fit) happens -------- 
+        // "I" Use integral of function in bin, normalized by the bin volume, instead of value at bin center,
+        //
     //    cout << "Fit done!!!!" << endl << endl;
         fcnFit->GetParameters(pfit);
         chi2 = fcnFit->GetChisquare();
@@ -476,7 +521,7 @@ Int_t SDDclass::FitTiMn( Bool_t saveflag )
         fcnShelfMn1   = new TF1("fcnShelfMn1",   shelfFunc,  l_bin,  u_bin, 7);
         fcnShelfTi1   = new TF1("fcnShelfTi1",   shelfFunc,  l_bin,  u_bin, 7);
         //fcnCaka1 = new TF1("fcnCaka1", caka1Func, l_bin,  u_bin, 5);
-        fcnTika1 = new TF1("fcnTika1", tika1Func, l_bin,  u_bin, 5);
+        fcnTika1 = new TF1("fcnTika1", tika1Func, l_bin,  u_bin, 6);
         fcnMnka1 = new TF1("fcnMnka1", mnka1Func, l_bin,  u_bin, 5);
 
         fcnTTiK1 = new TF1("fcnTTiK1", titailFunc,  l_bin,  u_bin, 8);
@@ -567,7 +612,7 @@ Int_t SDDclass::FitTiMn( Bool_t saveflag )
         fcnBck->SetParameters(pfit);
         fcnShelfMn1->SetParameters(pfit[5], pfit[9], pfit[3], pfit[4], pfit[21], pfit[9], pfit[10]); // Mn Ka1 shelf function
         fcnShelfTi1->SetParameters(pfit[5], pfit[9], pfit[3], pfit[4], pfit[21], pfit[5], pfit[6]); // Ti Ka1 shelf function
-        fcnTika1->SetParameters(pfit[5], pfit[9], pfit[6], pfit[3], pfit[4]);
+        fcnTika1->SetParameters(pfit[5], pfit[9], pfit[6], pfit[3], pfit[4],0);
         fcnMnka1->SetParameters(pfit[9], pfit[5], pfit[10],pfit[3], pfit[4]);
         //fcnCaka1->SetParameters(pfit[9], pfit[5], pfit[23], pfit[3], pfit[4]);
         fcnTTiK1->SetParameters(pfit[9], pfit[5], pfit[14], pfit[3], pfit[4], pfit[6], pfit[19], pfit[15]);
@@ -962,7 +1007,7 @@ Int_t SDDclass::FitTiCu( Bool_t saveflag )
 
 Int_t SDDclass::FitTiMnCu( Bool_t saveflag )
 {
-    cout << "# In SDDclass::FitTiMnCu() ... " << endl;
+    cout << endl <<  "# In SDDclass::FitTiMnCu() ... " << endl;
     Bool_t   kmnfe;
     status = 0;          // Fit status:Return value of Fit. 0: converged; 4: abnormal termination
     chi2   = 0.;
@@ -1029,7 +1074,8 @@ Int_t SDDclass::FitTiMnCu( Bool_t saveflag )
         Double_t  cuka_lbound      = init_mean_cu - 20.;
         Double_t  cuka_ubound      = init_mean_cu + 20.;
 
-        froot = new TFile( rootfile, "READ" );
+        //froot = new TFile( rootfile, "READ" );
+        froot = TFile::Open(rootfile, "READ");
         hcal = new TH1F("hcal", "hcal", 4096, -0.5, 4095.5);
 
         TTree *tr_t = (TTree*)froot->Get("tr");     
@@ -1073,7 +1119,7 @@ Int_t SDDclass::FitTiMnCu( Bool_t saveflag )
 
 
         fcnFit->SetParameter(0, bg_setvalue);                 // constant background
-        fcnFit->SetParLimits(0, 0.,  bg_setvalue*10);
+        fcnFit->SetParLimits(0, 0.,  bg_setvalue*20);        // 9.8.2017: upper limit changed to setvalue *20 from *10
         /*fcnFit->SetParameter(1, 50.);                   // exponential gain
         fcnFit->SetParLimits(1, 1., 500.);                   
         fcnFit->SetParameter(2, 0.0001);                //exponential slope (positive!)
@@ -1081,7 +1127,7 @@ Int_t SDDclass::FitTiMnCu( Bool_t saveflag )
         fcnFit->FixParameter(1 , 0.);
         fcnFit->FixParameter(2 , 0.);             
         fcnFit->SetParameter(3, init_fano );           // FANO
-        fcnFit->SetParLimits(3, 0.09, 0.4);
+        fcnFit->SetParLimits(3, 0., 0.4);               // 9.8.2017: lower bound: 0.09 -> 0
         fcnFit->SetParameter(4, init_cnst );           // Constant noise 
         fcnFit->SetParLimits(4, 0, 100.);           
         fcnFit->SetParameter(5, init_mean_ti);         // TiKa1 mean in ch
@@ -1091,7 +1137,7 @@ Int_t SDDclass::FitTiMnCu( Bool_t saveflag )
         fcnFit->SetParameter(7, init_mean_tikb);       // TiKb mean in ch
         fcnFit->SetParLimits(7, tikb_lbound, tikb_ubound);
         fcnFit->SetParameter(8, 0.26);                  // Ti Kb to Ka gain ratio
-        fcnFit->SetParLimits(8, 0.05, 0.8);
+        fcnFit->SetParLimits(8, 0.05, 1.);              // 9.8.2017: upper limit changed to 1. from 0.8
         fcnFit->SetParameter(9, init_mean_mn);         // MnKa1 mean in ch
         fcnFit->SetParLimits(9, mnka_lbound, mnka_ubound);
         fcnFit->SetParameter(10, mn_gain_setvalue);    // MnKa1 gain
@@ -1099,7 +1145,7 @@ Int_t SDDclass::FitTiMnCu( Bool_t saveflag )
         fcnFit->SetParameter(11, init_mean_mnkb);      // MnKb mean in ch
         fcnFit->SetParLimits(11, mnkb_lbound, mnkb_ubound);
         fcnFit->SetParameter(12, 0.7);                 // Mn Kb to Ka gain ratio -> high for LNGS data
-        fcnFit->SetParLimits(12, 0.05, 0.8);        
+        fcnFit->SetParLimits(12, 0.05, 1.);        // 9.8.2017: upper bound: 0.8 -> 1
         fcnFit->SetParameter(14, 50.);                 // Tail mean shift eV !!
         fcnFit->SetParLimits(14, 0., 200.);           // lower limit 100 to 30. 22/02/2010
         fcnFit->SetParameter(13, 0.01);                 // Escape peak gain
@@ -1110,7 +1156,7 @@ Int_t SDDclass::FitTiMnCu( Bool_t saveflag )
         fcnFit->SetParLimits(15, 0.001, 0.40);           // upper 0.2 to 0.60 
         //fcnFit->FixParameter(19,  0.);
         fcnFit->SetParameter(16, 0.2);                 // Tail gain ratio ti Kb
-        fcnFit->SetParLimits(16, 0.001, 0.55);          // upper 0.2 to 0.40 22/02/2010
+        fcnFit->SetParLimits(16, 0.001, 0.6);          // upper 0.2 to 0.40 22/02/2010
         fcnFit->SetParameter(17, 0.2);                 // Tail gain ratio mn Ka
         fcnFit->SetParLimits(17, 0.001, 0.40);           // upper 0.2 to 0.60 
 
@@ -1131,9 +1177,9 @@ Int_t SDDclass::FitTiMnCu( Bool_t saveflag )
         fcnFit->SetParameter(24, init_mean_cukb);       // CuKb mean in ch
         fcnFit->SetParLimits(24, cukb_lbound, cukb_ubound);
         fcnFit->SetParameter(25, 0.26);                  // Cu Kb to Ka gain ratio
-        fcnFit->SetParLimits(25, 0.05, 0.8);
+        fcnFit->SetParLimits(25, 0.05, 3);
         fcnFit->SetParameter(26, 0.2);                 // Tail gain ratio all Cu lines
-        fcnFit->SetParLimits(26, 0.001, 0.40);           // upper 0.2 to 0.60 
+        fcnFit->SetParLimits(26, 0.000001, 0.40);           // upper 0.2 to 0.60 
        // Cu tail slope is taken from mn tail slope for testing
        // cu also has no escape peaks for now and no shelf
 
@@ -1156,6 +1202,9 @@ Int_t SDDclass::FitTiMnCu( Bool_t saveflag )
 
         status = hcal->Fit("fcnFit", "R"); // here the magic (fit) happens --------
 	// "R" Use the Range specified in the function range, "E" Perform better Errors estimation using Minos technique, "I" Use integral of function in bin, normalized by the bin volume, instead of value at bin center
+        //"L" Use Loglikelihood method (default is chisquare method)
+        //  fitStatus = migradResult + 10*minosResult + 100*hesseResult + 1000*improveResult. TMinuit will return 0 (for migrad, minos, hesse or improve) in case of success and 4 in case of error
+        // so I think migrad algorithm is used by default, so the fit status is 4 when there is an error and 0 if there is none (compared to 40 for error for minos technique)
         fcnFit->GetParameters(pfit);
         chi2 = fcnFit->GetChisquare();
         ndf  = fcnFit->GetNDF();
@@ -1323,6 +1372,9 @@ Int_t SDDclass::FitTiMnCu( Bool_t saveflag )
         cout << "  chi2 = " << chi2 << ";  NDF = " << ndf << ";  chi2/ndf = " 
              << chi2 / ndf << endl;
         cout << "# Plotted fit functions to pads." << endl;
+        
+        //froot->Close();
+        //delete froot;
         
  /*       //////// Tail ana part //////////
         lbtl[0] = pfit[5] - 300.;
@@ -1838,6 +1890,7 @@ void  SDDclass::GetFitParameters( TString source )
     if( source != "TiCuZr" ){ // start for the case of ti mn source calibration
 
     cout << "# In SDDclass::GetFitParameters() ... " << endl;
+    backG = pfit[0];
     fano = pfit[3];
     cstn = pfit[4];
     fanoEr = fcnFit->GetParError(3);
@@ -1878,6 +1931,7 @@ void  SDDclass::GetFitParameters( TString source )
         pXcuka1Er = fcnFit->GetParError(22);
 	pXcukb1 = pfit[24];
 	pXcukb1Er = fcnFit->GetParError(24);
+        cukaG = pfit[23];
         //pXmnka1 = pfit[22];
         //pXmnka1Er = fcnFit->GetParError(22);
         //pXcukb1 = pfit[11];
@@ -1923,7 +1977,9 @@ void  SDDclass::PlotResidue( TString source )
 {
     cout << "# In SDDclass::PlotResidue() ... " << endl;
     Double_t lb, ub;
-    if( source != "TiCuZr"){ lb = pXtika1 - 200.; ub = pXcuka1 + 200.; }
+    
+    if( source == "TiMnCu"){ lb = pXtika1 - 200.; ub = pXcuka1 + 200.; }
+    if( source == "TiMn")  { lb = pXtika1 - 200.; ub = pXmnka1 + 300.; }
     if( source == "TiCuZr"){ lb = pXtika1 - 200.; ub = pXzrka1 + 1000.; }    
     Int_t lowBin = hcal->FindBin(lb);
     Int_t upBin  = hcal->FindBin(ub);
@@ -1990,10 +2046,13 @@ void SDDclass::CalcFwhmMn( TString source )
     // Do not consider about error of sig 
     //Double_t  slope = ( pXcuka1 - pXtika1 ) / ( CuKa1 - TiKa1 );
     //Double_t  slopeEr = sqrt(pXcuka1Er*pXcuka1Er+pXtika1Er*pXtika1Er)/(CuKa1-TiKa1);
-    Double_t  slope, slopeEr;
+    //Double_t  slope, slopeEr;
     if( source != "TiCuZr"){ 
 	slope = ( pXmnka1 - pXtika1 ) / ( MnKa1 - TiKa1 ); // slope in ch/eV
         slopeEr = sqrt(pXmnka1Er*pXmnka1Er+pXtika1Er*pXtika1Er)/(MnKa1-TiKa1); // slope error propagated from peak position errors (ca 1/100 channel)
+        offset = pXtika1 - slope * TiKa1;
+        offsetEr = sqrt( pXtika1Er * pXtika1Er + TiKa1 * TiKa1 * slopeEr * slopeEr );
+        
         
     }
     else{
@@ -2003,15 +2062,17 @@ void SDDclass::CalcFwhmMn( TString source )
     }
 
     //sig_tika   = sqrt( pXtika1 * SiW * fano * slope + cstn * cstn );          //[ch]
+    if( source == "TiMn" ){ pXcuka1 =  pXmnka1 + ( CuKa1 - MnKa1 ) *  slope;}
     sig_mnka   = sqrt( pXmnka1 * SiW * fano * slope + cstn * cstn );          //[ch]
+    sig_cuka   = sqrt( pXcuka1 * SiW * fano * slope + cstn * cstn );          //[ch]
     //sig_tikaEr = 0.1;                   // Only for initialization 
     //sig_mnkaEr = 0.1;                   // Only for initialization 
-    fwhm       = SIG2FWHM * ( sig_mnka / slope );     // FWHM for MnKa region [eV] - from fitted fano noise mostly
+    fwhm       = SIG2FWHM * ( sig_mnka / slope );     // FWHM for CuKa region [eV] - from fitted fano noise mostly --- changed it back to fwhm at mn ka as cu ka channel can not be fitted exactly
     fwhmEr     = SIG2FWHM*slopeEr*sig_mnka/slope/slope; //Only propagate slope error, not the error of the sigma (which includes the error of the fano and the const noise)
 
     //cout << "# Slope, cstn, SiW , pXtika1, Sig_tika, fano , fwhm : " 
     cout << "# Slope: " << slope << ", cstn: " << cstn << ", SiW: " <<  SiW 
-         << ", MnKaCh: " << pXmnka1 << ", SigMnKa: " << sig_mnka << ", fano: " 
+         << ", MnKaCh: " << pXmnka1 << ", SigCuKa: " << sig_cuka << ", fano: " 
          <<  fano << ", fwhm (Mn): " << fwhm << ", fwhmEr: " <<  fwhmEr << endl; 
   
     return ;
@@ -2160,9 +2221,9 @@ void SDDclass::FitE2ChLine( TString source) // energy to channel line
     gre2c->Fit("fe2c", "R");
     gre2c->Draw("same");
 
-    offset = fe2c->GetParameter(0); // here the offset and the ev2ch ratio are calculated
+    offsetE2 = fe2c->GetParameter(0); // here the offset and the ev2ch ratio are calculated
     ev2ch  = fe2c->GetParameter(1); // in ch/eV
-    offsetEr = fe2c->GetParError(0);
+    offsetE2Er = fe2c->GetParError(0);
     ev2chEr  = fe2c->GetParError(1);
     
     ctmp->cd(1);
@@ -2191,7 +2252,7 @@ void SDDclass::FitE2ChLine( TString source) // energy to channel line
     Double_t low_edge = -0.5;
     Double_t high_edge = -0.5 + bin_number * 1./ev2ch;
     
-    TH1F *hev = new TH1F("hev", "Energy spectrum", bin_number, low_edge, high_edge);
+    hev = new TH1F("hev", "Energy spectrum", bin_number, low_edge, high_edge);
 
     TTree *tr_t = (TTree*)froot->Get("tr");
     Int_t ent = (Int_t)tr_t->GetEntries();
@@ -2215,13 +2276,13 @@ void SDDclass::FitE2ChLine( TString source) // energy to channel line
     gPad->SetGridy();
     gPad->SetGridx();
     gPad->SetLogy(); 
-    cev->Update();
+    
 
     hev->GetXaxis()->SetTitle("Energy [eV]");
     hev->GetXaxis()->SetLabelSize(0.04);
     hev->SetStats(0);
     hev->Draw(); //here the energy histogram should be drawn to the canvas
-    
+    cev->Update();
 
    // TFile hist_file("/home/andreas/vip2/reports/1608_VIPReportLNF/sdd1LNGS.root", "RECREATE");
    // hev->Write();  
@@ -2254,9 +2315,9 @@ void SDDclass::CloseCanvas(Bool_t saveplot)
         ctmp->Print(Form(GRAPH_PATH + "/SDD/calib/" + "%04d%02d%02dCalibLinearity%02d.pdf", year, month, day, padc_ch) );
         cev ->Print(Form(GRAPH_PATH + "/SDD/calib/" + "%04d%02d%02dEnergySpectrum%02d.pdf", year, month, day, padc_ch) );
     }
-    //c1->Close();
-    //ctmp->Close();
-    //cev->Close();
+    c1->Close();
+    ctmp->Close();
+    cev->Close();
     return ;
 }
 
@@ -2264,6 +2325,7 @@ void SDDclass::CloseRootFile()
 {
     cout << "# Close TFile froot. " << endl;
     froot->Close();
+    delete froot;
     return ;
 }
 
@@ -2307,6 +2369,7 @@ Time   SDDclass::GetUnixT()  const { return ut; }
 
 Int_t  SDDclass::GetNdf()       const { return ndf; }
 AnaPar SDDclass::GetChi2()      const { return chi2; }
+AnaPar SDDclass::GetBackG()     const { return backG; }
 AnaPar SDDclass::GetFano()      const { return fano; }
 AnaPar SDDclass::GetFanoEr()    const { return fanoEr; }
 AnaPar SDDclass::GetCstn()      const { return cstn; }
@@ -2336,8 +2399,12 @@ AnaPar SDDclass::GetFwhm()      const { return fwhm; }
 AnaPar SDDclass::GetFwhmEr()    const { return fwhmEr; }
 AnaPar SDDclass::GetEv2ch()     const { return ev2ch; }
 AnaPar SDDclass::GetEv2chEr()   const { return ev2chEr; }
-AnaPar SDDclass::GetE2ChOffset()   const { return offset; }
-AnaPar SDDclass::GetE2ChOffsetEr() const { return offsetEr; }
+AnaPar SDDclass::GetE2ChOffset()   const { return offsetE2; }
+AnaPar SDDclass::GetE2ChOffsetEr() const { return offsetE2Er; }
+AnaPar SDDclass::GetOffset()   const { return offset; }
+AnaPar SDDclass::GetOffsetEr() const { return offsetEr; }
+AnaPar SDDclass::GetSlope()   const { return slope; }
+AnaPar SDDclass::GetSlopeEr() const { return slopeEr; }
 AnaPar SDDclass::GetNtiK()       const { return ntiK; }
 AnaPar SDDclass::GetNtiKEr()     const { return ntiKEr; }
 AnaPar SDDclass::GetNcuK()       const { return ncuK; }

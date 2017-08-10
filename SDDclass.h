@@ -60,7 +60,9 @@ class SDDclass  {
         Time   GetUnixT()    const ;
         Time   GetRunTime() ;
 
+        
         Int_t  GetNdf()       const ;
+        AnaPar GetBackG()     const ;
         AnaPar GetChi2()      const ;
         AnaPar GetFano()      const ;
         AnaPar GetFanoEr()    const ;
@@ -84,6 +86,10 @@ class SDDclass  {
         AnaPar GetSigMnkaEr() const ;
         AnaPar GetFwhm()      const ;
         AnaPar GetFwhmEr()    const ; 
+        AnaPar GetSlope()      const ;
+        AnaPar GetSlopeEr()    const ; 
+        AnaPar GetOffset()      const ;
+        AnaPar GetOffsetEr()    const ; 
         AnaPar GetEv2ch()     const ;
         AnaPar GetEv2chEr()   const ;
         AnaPar GetE2ChOffset()    const ;
@@ -245,11 +251,13 @@ class SDDclass  {
 
         AnaPar chi2;
         bool   k2Peaks; // saying if 2 peaks were found in searchpeak()
+        AnaPar slope, slopeEr, offset, offsetEr;
         AnaPar ll;  // lower channel limit hcal + searchpeak histograms, set in gethistorange() -> mainly limits for the hcal histogram, which is the one with the fit!!, 350 atm
         AnaPar ul;  // ... 1500 atm
         AnaPar peakX[2]; // starting value for the peak fitting algorithm found by tspectrum in searchpeak(); peakX[0,1] ... 2 biggest peaks
         AnaPar peakY[2];
         AnaPar bpar[3];
+        AnaPar backG; // background gain
         Double_t pX[6], pY[6], pXEr[6] = {0}, pYEr[6], pXmn[6], pYmn[6], pXmnEr[6] = {0}, pYmnEr[6], pX_line[2], pY_line[2]; // fields for drawing the ev2channel line fit in
         AnaPar pXcaka1,    pXtika1,   pXcuka1,   pXmnka1, pXzrka1;
         AnaPar pXcaka1Er,  pXtika1Er, pXcuka1Er, pXmnka1Er, pXzrka1Er;
@@ -345,12 +353,14 @@ class SDDclass  {
         AnaPar sig_tikaEr;
         AnaPar sig_mnka;
         AnaPar sig_mnkaEr;
-        AnaPar fwhm;                                  // calculated at 6 keV
+        AnaPar sig_cuka;
+        AnaPar sig_cukaEr;
+        AnaPar fwhm;                                  // calculated at 6 keV -> changed to copper region!! on 5.6..2017
         AnaPar fwhmEr;                                // Error of calculated fwhm
         AnaPar ev2ch;          // ev2ch ratio from the fit of the ev2ch line in the fite2chLine() function; [ch/eV]
         AnaPar ev2chEr; 
-        AnaPar offset;
-        AnaPar offsetEr;
+        AnaPar offsetE2;
+        AnaPar offsetE2Er;
 
         /*
         SlowPar  vrefPOS;

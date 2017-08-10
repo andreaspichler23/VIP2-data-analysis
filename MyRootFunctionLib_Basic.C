@@ -92,6 +92,95 @@ TH1F* HistoFromTree(TString rootfile, TString place, Int_t sdd){ // not working 
 
 }
 
+
+void SaveFinalHisto(TString inFile, TString outFile, TString place){ 
+    // saving histograms from tree of final rootfile to another rootfile with scintillator rejection cut
+
+  
+  Int_t adcChannelList[6] = {0,2,3,5,6,7};
+  Double_t energyList[16];
+  Short_t trgid;
+  
+
+  Int_t size = place.Sizeof();
+  TString inFileName, outFileName;
+
+  if(size==4)inFileName = ROOT_PATH_SMI + "/" + inFile;
+  if(size==5)inFileName = ROOT_PATH_LNGS + "/1-618files-final/" + inFile + ".root";
+  
+  if(size==4)outFileName = ROOT_PATH_SMI + "/" + outFile;
+  if(size==5)outFileName = ROOT_PATH_LNGS + "/1-618files-final/" + outFile + ".root";
+
+  //cout << rootfilename << endl;
+
+
+  TFile *inF = TFile::Open(inFileName, "READ");
+  TFile *outF = TFile::Open(outFileName, "UPDATE");
+  TTree *tree = (TTree*)inF->Get("tr");
+  
+  TBranch *energyB;
+  TBranch *trgidB;
+  
+  TString name1 = inFile + "sdd1";
+  TString name2 = inFile + "sdd2";
+  TString name3 = inFile + "sdd3";
+  TString name4 = inFile + "sdd4";
+  TString name5 = inFile + "sdd5";
+  TString name6 = inFile + "sdd6";
+ 
+
+  //adcEvent = tree->GetBranch("padc");
+  energyB = tree->GetBranch("energy");
+  trgidB = tree->GetBranch("trgid");
+  
+  energyB->SetAddress(energyList);
+  trgidB->SetAddress(&trgid);
+
+  Int_t nevent = tree->GetEntries();
+
+  TH1F *sdd1H = new TH1F(name1,"", 9000, 1000, 10000);
+  TH1F *sdd2H = new TH1F(name2,"", 9000, 1000, 10000);
+  TH1F *sdd3H = new TH1F(name3,"", 9000, 1000, 10000);
+  TH1F *sdd4H = new TH1F(name4,"", 9000, 1000, 10000);
+  TH1F *sdd5H = new TH1F(name5,"", 9000, 1000, 10000);
+  TH1F *sdd6H = new TH1F(name6,"", 9000, 1000, 10000);
+
+
+  for( Int_t i = 0; i < nevent; i++){
+    
+    energyB->GetEvent(i);
+    trgidB->GetEvent(i);
+    
+    if( trgid == 1 ){
+        
+        sdd1H->Fill(energyList[0]);
+        sdd2H->Fill(energyList[2]);
+        sdd3H->Fill(energyList[3]);
+        sdd4H->Fill(energyList[5]);
+        sdd5H->Fill(energyList[6]);
+        sdd6H->Fill(energyList[7]);
+        
+    }
+    
+ 
+  }
+  
+  
+  //sdd1H->Draw();
+  outF->cd();
+  //gDirectory->pwd();
+  //gDirectory->ls();
+  outF->Write();
+  
+  inF->Close();
+  outF->Close();
+  
+  
+  
+ return;
+
+}
+
 Double_t GetOffset(TString rootfile, TString place, Int_t sdd){
 
   TH1F *histo;
@@ -270,6 +359,8 @@ Int_t GetRunTime(TString rootfile, TString place, Int_t divider, Int_t part, Int
 
   if(size==4)rootfilename = ROOT_PATH_SMI + "/" + rootfile;
   if(size==5)rootfilename = ROOT_PATH_LNGS + "/" + rootfile;
+  
+  //cout << rootfilename << endl;
 
   //TFile *f = new TFile(rootfilename, "READ");
   TFile *f = TFile::Open(rootfilename, "READ");
@@ -350,8 +441,8 @@ Int_t GetRunTime(TString rootfile, TString place, Int_t divider, Int_t part, Int
  hour = (Int_t)(sec - (day * 86400))/(3600);
  min  = (Int_t)(sec - (day * 86400 + hour * 3600))/(60);
 
- //cout << "That is about " <<  day << " days, " << hour << " hours, " << min << " minutes" << endl;
- //cout << "Also there were around " << fail_counter << " events with no ms clock timing information or big gaps between events" << endl;
+ cout << "That is about " <<  day << " days, " << hour << " hours, " << min << " minutes" << endl;
+ cout << "Also there were around " << fail_counter << " events with no ms clock timing information or big gaps between events" << endl;
 
  sec = (Int_t)sec;
  

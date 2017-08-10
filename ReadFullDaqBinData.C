@@ -50,6 +50,7 @@ void MakeTree( TString filelist, TString rootfilename, TString place )
 
     EventStruct  evt;  
     Int_t size = place.Sizeof();
+    //cout << size << endl;
     
     FILE  *flist;
 
@@ -62,6 +63,8 @@ void MakeTree( TString filelist, TString rootfilename, TString place )
     }}
 
     cout << filelist << endl;
+    //cout << rootfilename << endl;
+    
 
     char  listline[MAXCHAR];
     char  file_name[MAXCHAR];
@@ -70,7 +73,9 @@ void MakeTree( TString filelist, TString rootfilename, TString place )
     TString rootfile;
     if(size==4)rootfile = ROOT_PATH_SMI + "/" + rootfilename;
     if(size==5)rootfile = ROOT_PATH_LNGS + "/" + rootfilename;
-
+    
+    //cout << rootfile << endl;
+    
     TFile *f = new TFile( rootfile, "RECREATE");
     f->cd();
 
@@ -156,8 +161,8 @@ void MakeTreeLoop( TString filelistFile, TString place){
         cout << "Cannot open file: " << filelistFile << endl;
     }
 
-    cout << filelistFile << endl; // filelistFile is the name of the file which contains a list of strings, which correspond with a ".list" ending to the filenames of the files which include a list of binary files (already existing), and with a ".root"
-    // ending to the root files which are to be made
+    cout << filelistFile << endl; // filelistFile is the name of the file which contains a list of strings, which correspond with a ".list" ending to the filenames of the files which include
+   //a list of binary files (already existing), and with a ".root" ending to the root files which are to be made
 
     char  listline[MAXCHAR];
     char  file_name[MAXCHAR];
@@ -319,6 +324,7 @@ Int_t ReadData( TString datafilename, TString root_file, Int_t qdc_th[NScinti], 
 
     if((datafile = fopen(binary_file, "r"))==NULL){
         cout << "Cannot open file: " << binary_file << endl;
+        logfile << "Cannot open file: " << binary_file << endl;
     }
 
     cout << binary_file << endl;
@@ -635,7 +641,7 @@ Int_t ReadData( TString datafilename, TString root_file, Int_t qdc_th[NScinti], 
         if(success == 0){
             
             logfile << "PROBLEM!!!, file: " << datafilename << " hour: " << evt_r.time[3] << " minute: " << evt_r.time[4] << " day: " << evt_r.time[2] << " month: " << evt_r.time[1] << " year: " << evt_r.time[0] << endl;
-            logfile << "no slow control data found: stopping run of current binary file" << endl << endl;
+            logfile << "no slow control data found: stopping run of current binary file: " << binary_file << endl << endl;
             break;
             
         }
