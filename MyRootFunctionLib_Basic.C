@@ -27,6 +27,7 @@
 #include  "PhaseOneScintiConnectionTable.h"
 #include  "PhaseOneSDDConnectionTable.h"
 #include  "XrayLines.h"
+#include  "CalibFunction.h"
 
 
 using namespace std;
@@ -37,6 +38,186 @@ tr->Draw("adc[3]>>htemp(500,0,4200)","tdc[13]>5000 && adc[3]>80")
 tr->Draw("adc[3]>>htemp1(500,0,4200)","tdc[13]>5000", "same")
 */
 
+
+
+void AddSubtrHistograms(){
+    
+    TFile *f = new TFile("/home/andreas/vip2/data/root/LNGS/1-618files-final/energyHistograms.root","update");
+    
+    TH1F *hwS =(TH1F*)f->Get("withCurrentSum");
+    
+    TH1F *hw1 =(TH1F*)f->Get("withCurrentsdd1");
+    TH1F *hw2 =(TH1F*)f->Get("withCurrentsdd2");
+    TH1F *hw3 =(TH1F*)f->Get("withCurrentsdd3");
+    TH1F *hw4 =(TH1F*)f->Get("withCurrentsdd4");
+    TH1F *hw5 =(TH1F*)f->Get("withCurrentsdd5");
+    TH1F *hw6 =(TH1F*)f->Get("withCurrentsdd6");
+    
+    
+    TH1F *hnS =(TH1F*)f->Get("noCurrentSmallSum");
+    
+    TH1F *hn1 =(TH1F*)f->Get("noCurrentSmallsdd1");
+    TH1F *hn2 =(TH1F*)f->Get("noCurrentSmallsdd2");
+    TH1F *hn3 =(TH1F*)f->Get("noCurrentSmallsdd3");
+    TH1F *hn4 =(TH1F*)f->Get("noCurrentSmallsdd4");
+    TH1F *hn5 =(TH1F*)f->Get("noCurrentSmallsdd5");
+    TH1F *hn6 =(TH1F*)f->Get("noCurrentSmallsdd6");
+    
+    TH1F *hsS = new TH1F("SubHistSum","",9000,1000,10000);
+    
+    TH1F *hs1 = new TH1F("SubHistSdd1","",9000,1000,10000);
+    TH1F *hs2 = new TH1F("SubHistSdd2","",9000,1000,10000);
+    TH1F *hs3 = new TH1F("SubHistSdd3","",9000,1000,10000);
+    TH1F *hs4 = new TH1F("SubHistSdd4","",9000,1000,10000);
+    TH1F *hs5 = new TH1F("SubHistSdd5","",9000,1000,10000);
+    TH1F *hs6 = new TH1F("SubHistSdd6","",9000,1000,10000);
+    
+    hsS->Add(hwS,hnS,1,-1);
+    
+    hs1->Add(hw1,hn1,1,-1);
+    hs2->Add(hw2,hn2,1,-1);
+    hs3->Add(hw3,hn3,1,-1);
+    hs4->Add(hw4,hn4,1,-1);
+    hs5->Add(hw5,hn5,1,-1);
+    hs6->Add(hw6,hn6,1,-1);
+    
+    hsS->Write();
+    
+    hs1->Write();
+    hs2->Write();
+    hs3->Write();
+    hs4->Write();
+    hs5->Write();
+    hs6->Write();
+
+    f->Close();
+    delete f;
+}
+
+void SaveFinalHistograms(){
+    
+    TFile *f = new TFile("/home/andreas/vip2/data/root/LNGS/1-618files-final/energyHistograms.root");
+    
+    TString withString = "with";
+    TString noString = "no";
+    TString histString;
+    TString saveString;
+    TH1F *h;
+    
+    Int_t sdd = 1;
+    for( Int_t sdd = 1; sdd <= 6; sdd++){
+    
+        TCanvas *cc = new TCanvas("cc", "cc", 800, 600);
+        cc->cd();
+        histString = Form(noString + "Currentsdd" + "%d", sdd );
+        h = (TH1F*)f->Get(histString);
+        gPad->SetLogy();
+        h->Draw();
+        saveString = "/home/andreas/vip2/reports/Analysis/Plots/" + histString + ".pdf";
+    
+        cc -> Print(saveString);
+        delete cc;
+    
+    }
+    //cout << saveString << endl;
+    //h->Draw();
+    
+    
+}
+
+void CalcROICounts(){
+    
+    // adjust runTime und histString
+    
+    TFile *f = new TFile("/home/andreas/vip2/data/root/LNGS/1-618files-final/energyHistograms.root");
+    
+    TString withString = "with";
+    TString noString = "no";
+    TString histString;
+    TString saveString;
+    
+    
+    Double_t roiCounts[6];
+    Double_t sourceCounts[6];
+    
+    Int_t maxBinNumber = 9002;
+    Int_t binCenter, binContent;
+    Int_t roiLL = 7629;
+    Int_t roiUL = 7829;
+    
+    Int_t sourceLL = 4000;
+    Int_t sourceUL = 6700;
+    
+    //Int_t counter = 0;
+    Double_t totalRoi = 0;
+    Double_t totalSource = 0;
+    
+    Double_t runTime = 81.4166;
+    //Double_t runTime = 116.833;
+    
+    for( Int_t sdd = 1; sdd <= 6; sdd++){
+    
+        
+        histString = Form(withString + "Currentsdd" + "%d", sdd );
+        //cout << histString << endl;
+        TH1F *h = (TH1F*)f->Get(histString);
+        
+        
+        roiCounts[sdd-1] = 0;
+        
+        
+        for( Int_t binNumber = 1; binNumber <= maxBinNumber; binNumber++ ){
+            
+            binCenter = h->GetBinCenter(binNumber);
+            
+            
+            
+            if( binCenter > roiLL && binCenter < roiUL ){
+                
+                binContent = h -> GetBinContent(binNumber);
+               // counter += 1;
+                roiCounts[sdd-1] += binContent;
+                
+                //cout << binContent << " " << counter << endl;
+                
+            }
+            
+            
+            if( binCenter > sourceLL && binCenter < sourceUL ){
+                
+                binContent = h -> GetBinContent(binNumber);
+               // counter += 1;
+                sourceCounts[sdd-1] += binContent;
+                
+                //cout << binContent << " " << counter << endl;
+                
+            }
+            
+            
+        }
+        
+        //roiCounts[sdd-1] /= runTime;
+        
+        h->Delete();
+        cout << "sdd: " << sdd << " ROI counts: " <<  " " << roiCounts[sdd-1] << endl;
+        cout << "sdd: " << sdd << " source counts: " <<  " " << sourceCounts[sdd-1] << endl;
+        totalRoi += roiCounts[sdd-1];
+        totalSource += sourceCounts[sdd-1];
+
+    
+    }
+    cout << "hist of sdd 6 name: " << histString << endl;
+    cout << "run time: " << runTime << endl;
+    
+    cout << "total counts ROI: " << totalRoi <<endl;
+    cout << "total counts source: " << totalSource <<endl;
+    
+    //cout << "counts: " << roiCounts[0] << endl;
+    //cout << saveString << endl;
+    //h->Draw();
+    
+    
+}
 
 
 TH1F* HistoFromTree(TString rootfile, TString place, Int_t sdd){ // not working for SMI because of the adc -> padc TBranch  name and size change
@@ -95,6 +276,9 @@ TH1F* HistoFromTree(TString rootfile, TString place, Int_t sdd){ // not working 
 
 void SaveFinalHisto(TString inFile, TString outFile, TString place){ 
     // saving histograms from tree of final rootfile to another rootfile with scintillator rejection cut
+    // scintillator selection cut disabled now bc of varying scintillator rejection rate
+    // SaveFinalHisto("withCurrent","energyHistograms","lngs")
+    // SaveFinalHisto("noCurrentSmall","energyHistograms","lngs")
 
   
   Int_t adcChannelList[6] = {0,2,3,5,6,7};
@@ -127,6 +311,7 @@ void SaveFinalHisto(TString inFile, TString outFile, TString place){
   TString name4 = inFile + "sdd4";
   TString name5 = inFile + "sdd5";
   TString name6 = inFile + "sdd6";
+  TString nameSum = inFile + "Sum";
  
 
   //adcEvent = tree->GetBranch("padc");
@@ -144,14 +329,17 @@ void SaveFinalHisto(TString inFile, TString outFile, TString place){
   TH1F *sdd4H = new TH1F(name4,"", 9000, 1000, 10000);
   TH1F *sdd5H = new TH1F(name5,"", 9000, 1000, 10000);
   TH1F *sdd6H = new TH1F(name6,"", 9000, 1000, 10000);
+  
+  TH1F *sumH = new TH1F(nameSum,"", 9000, 1000, 10000);
 
+  
 
   for( Int_t i = 0; i < nevent; i++){
     
     energyB->GetEvent(i);
     trgidB->GetEvent(i);
     
-    if( trgid == 1 ){
+    //if( trgid == 1 ){
         
         sdd1H->Fill(energyList[0]);
         sdd2H->Fill(energyList[2]);
@@ -160,13 +348,21 @@ void SaveFinalHisto(TString inFile, TString outFile, TString place){
         sdd5H->Fill(energyList[6]);
         sdd6H->Fill(energyList[7]);
         
-    }
+        
+        
+    //}
     
  
   }
   
-  
+  sumH->Add(sdd1H);
+  sumH->Add(sdd2H);
+  sumH->Add(sdd3H);
+  sumH->Add(sdd4H);
+  sumH->Add(sdd5H);
+  sumH->Add(sdd1H);
   //sdd1H->Draw();
+  //sumH->Draw();
   outF->cd();
   //gDirectory->pwd();
   //gDirectory->ls();
@@ -371,6 +567,9 @@ Int_t GetRunTime(TString rootfile, TString place, Int_t divider, Int_t part, Int
 
   TBranch *clkEvent   = tree->GetBranch("clk");
   clkEvent->SetAddress(&evt_r.clk);
+  
+  TBranch *utEvent   = tree->GetBranch("ut");
+  utEvent->SetAddress(&evt_r.ut);
 
   
   //cout << "starting time: " << sec_buff << endl;
@@ -394,9 +593,10 @@ Int_t GetRunTime(TString rootfile, TString place, Int_t divider, Int_t part, Int
   for( Int_t i = lbound; i <= ubound; i++){
 
     clkEvent->GetEvent(i);
+    utEvent->GetEvent(i);
     sec_curr = (int)evt_r.clk/1000; // second of current event
 
-     
+    
 
     t_gap = sec_curr - sec_buff;
     //cout << i << endl;		

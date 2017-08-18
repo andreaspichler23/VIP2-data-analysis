@@ -25,6 +25,54 @@
 
 using namespace std;
 
+Double_t RoiCuFunc(Double_t *x, Double_t *par){
+    
+    // fit of the region of roi, nickel, and cu ka kb
+    // this is for fitting an already scaled histogram
+    
+    
+    Double_t xx = x[0];
+    
+    //par[0] = background
+    
+    Double_t back = par[0];
+    
+    //par[1] = cu ka1 gain
+    //par[2] = cu ka1 mean
+    //par[3] = cu ka1 sigma
+    
+    Double_t cuKa1 = par[1]/(sqrt(2*TMath::Pi())*par[3])*TMath::Exp(-((xx-par[2])*(xx-par[2]))/(2*par[3]*par[3]));
+    
+    Double_t cuKa2Gain = par[1] * 0.51;
+    Double_t cuKa2Mean = par[2] - 19.95;
+    
+    Double_t cuKa2 = cuKa2Gain/(sqrt(2*TMath::Pi())*par[3])*TMath::Exp(-((xx-cuKa2Mean)*(xx-cuKa2Mean))/(2*par[3]*par[3]));
+    
+    //par[4] = cu kb gain
+    //par[5] = cu kb mean
+    //par[6] = cu kb sigma
+    
+    Double_t cuKb = par[4]/(sqrt(2*TMath::Pi())*par[6])*TMath::Exp(-((xx-par[5])*(xx-par[5]))/(2*par[6]*par[6]));
+    
+    //par[7] = ni ka1 gain
+    //par[8] = ni ka1 mean
+    //par[9] = ni ka1 sigma
+  
+    
+    Double_t niKa1 = par[7]/(sqrt(2*TMath::Pi())*par[9])*TMath::Exp(-((xx-par[8])*(xx-par[8]))/(2*par[9]*par[9]));
+    
+    Double_t niKa2Gain = par[7] * 0.51;
+    Double_t niKa2Mean = par[8] - 17.3;
+    
+    Double_t niKa2 = niKa2Gain/(sqrt(2*TMath::Pi())*par[9])*TMath::Exp(-((xx-niKa2Mean)*(xx-niKa2Mean))/(2*par[9]*par[9]));
+    
+    Double_t roiCuFunc = back + cuKa1 + cuKa2 + cuKb + niKa1 + niKa2;
+    
+   
+    return roiCuFunc; 
+    
+}
+
 ////////* background *//////////
 //  Exponential over constant 
 //  line background.   

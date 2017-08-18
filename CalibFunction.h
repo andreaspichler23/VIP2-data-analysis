@@ -8,6 +8,7 @@
 #ifndef CalibFunction_H
 #define CalibFunction_H
 
+extern Double_t RoiCuFunc( Double_t *x, Double_t *par);
 extern Double_t backFunc( Double_t *x, Double_t *par);
 extern Double_t shelfFunc(Double_t *x, Double_t *par);
 

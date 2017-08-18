@@ -98,9 +98,9 @@ void SingleSDDCalib( ID nSDD,  ID nPADC,  TString rootf, TString source, TString
         
         // this is for BestTimeForRootfile: datafile << nSDD << " " << fwhm << " " << fwhmEr << " " << tika1 << " " << tika1Er << " " << mnka1 << " " << mnka1Er << " " << cuka1 << " " << cuka1Er << " " << fstatus << endl;
         //cout << endl << " THE FIT STATUS IS: " << fstatus << endl;
-        datafile << fileNumber << " " << nSDD << " " << slope << " " << slopeEr << " " << offset << " " << offsetEr << " " << fwhm << " " << fwhmEr << " " << fano << " " << fanoEr << " " 
-                << cstn << " " << cstnEr << " " << mnka1 << " " << mnka1Er << " " << mny << " " << tika1 << " " << tika1Er << " " << tikay << " " << cuka1 << " " << cuka1Er << " " << backG << " "
-                << cukaG << " " << chi2 << " " << fstatus << " " << ndf << endl;
+       // datafile << fileNumber << " " << nSDD << " " << slope << " " << slopeEr << " " << offset << " " << offsetEr << " " << fwhm << " " << fwhmEr << " " << fano << " " << fanoEr << " " 
+       //         << cstn << " " << cstnEr << " " << mnka1 << " " << mnka1Er << " " << mny << " " << tika1 << " " << tika1Er << " " << tikay << " " << cuka1 << " " << cuka1Er << " " << backG << " "
+        //        << cukaG << " " << chi2 << " " << fstatus << " " << ndf << endl;
         //logfile.close();
         datafile.close();
  
