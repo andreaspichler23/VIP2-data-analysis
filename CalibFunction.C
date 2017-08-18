@@ -33,9 +33,10 @@ Double_t RoiCuFunc(Double_t *x, Double_t *par){
     
     Double_t xx = x[0];
     
-    //par[0] = background
+    //par[0] = background constant
+    //par[10] = background slope
     
-    Double_t back = par[0];
+    Double_t back = par[0] + (xx - 7000) * par[10];
     
     //par[1] = cu ka1 gain
     //par[2] = cu ka1 mean

@@ -36,8 +36,13 @@ void FitHistogram(  TString histString, Int_t savePlot, Int_t rebin ){
     
     Double_t counts;
     Int_t lowerL = 7000;
-    Int_t upperL = 9100;
-    Int_t nPar = 10;
+    Int_t upperL = 9500;
+    Int_t nPar = 11;
+    
+    Double_t fitResult[nPar+2];
+    
+    ofstream fitFile;
+    fitFile.open("/home/andreas/vip2/reports/Analysis/CuFitFile.txt",ios::app);
     
     TFile *inF = TFile::Open("/home/andreas/vip2/data/root/LNGS/1-618files-final/energyHistograms.root");
     TH1F *hist = (TH1F*)inF->Get(histString);
@@ -50,19 +55,23 @@ void FitHistogram(  TString histString, Int_t savePlot, Int_t rebin ){
     Double_t cuKbGainStart = (counts / 30) * rebin;
     Double_t niKa1GainStart = (counts / 100) * rebin;
     
-    cout << "counts: " << counts << endl;
-    cout << "cu ka1 gain start: " << cuKa1GainStart << endl;
-    cout << "cu kb gain start: " << cuKbGainStart << endl;
-    cout << "ni gain start: " << niKa1GainStart << endl;
+//    cout << "counts: " << counts << endl;
+//    cout << "cu ka1 gain start: " << cuKa1GainStart << endl;
+//    cout << "cu kb gain start: " << cuKbGainStart << endl;
+//    cout << "ni gain start: " << niKa1GainStart << endl;
     
     Double_t backStart = (counts / 4000) * rebin;
+    Double_t backSlopeStart = -(1./2000) * rebin;
     
-    Double_t sigmaStart = 60;
+//    cout << "back slope start: " << backSlopeStart << endl;
+    
+    Double_t sigmaStart = 75;
     
     
     TF1 *fitFunc = new TF1("fitFunc", RoiCuFunc, lowerL, upperL, nPar );
     
-    fitFunc->SetParName(0,"Background");
+    fitFunc->SetParName(0,"Background constant");
+    fitFunc->SetParName(10,"Background Slope");
     
     fitFunc->SetParName(1,"Cu Ka1 Gain");
     fitFunc->SetParName(4,"Cu Kb Gain");
@@ -79,6 +88,7 @@ void FitHistogram(  TString histString, Int_t savePlot, Int_t rebin ){
     
     fitFunc->SetParameter(0,backStart);
     fitFunc->SetParLimits(0,0,backStart*2);
+    fitFunc->SetParameter(10,backSlopeStart);
     
     fitFunc->SetParameter(1,cuKa1GainStart);
     fitFunc->SetParameter(4,cuKbGainStart);
@@ -86,9 +96,9 @@ void FitHistogram(  TString histString, Int_t savePlot, Int_t rebin ){
     //fitFunc->SetParLimits(1,0,cuKa1GainStart*2);
     
     fitFunc->SetParameter(2,CuKa1);
-    fitFunc->SetParLimits(2,CuKa1-10,CuKa1+20);
+    fitFunc->SetParLimits(2,CuKa1-10,CuKa1+30);
     fitFunc->SetParameter(5,CuKb1);
-    fitFunc->SetParLimits(5,CuKb1-10,CuKb1+20);
+    fitFunc->SetParLimits(5,CuKb1-10,CuKb1+30);
     fitFunc->SetParameter(8,NiKa1);
     fitFunc->SetParLimits(8,NiKa1-10,NiKa1+10);
     
@@ -96,16 +106,75 @@ void FitHistogram(  TString histString, Int_t savePlot, Int_t rebin ){
     fitFunc->SetParameter(6,sigmaStart);
     fitFunc->SetParameter(9,sigmaStart);
     
-    fitFunc->SetParLimits(9,0,sigmaStart+20);
+    fitFunc->SetParLimits(9,sigmaStart-20,sigmaStart+20);
     
-    hist->Fit("fitFunc", "R");
+    hist->Fit("fitFunc", "RI");
     
-    hist->Draw();
+    fitFunc->GetParameters(fitResult);
+    fitResult[nPar]     = fitFunc->GetChisquare();
+    fitResult[nPar+1]   = fitFunc->GetNDF();
+    fitResult[nPar+2]   = fitResult[nPar]/fitResult[nPar+1];
+    fitResult[nPar+3]   = fitResult[3] * 2.355;
+    
+    //cout << fitResult[3] << " " << fitResult[nPar+3]<< endl;
+    
+    fitFile << histString << " ";
+    
+    cout << "fwhm is: " << fitResult[nPar+3] << " eV!" << endl;
+    
+    for( Int_t i = 0; i <= nPar+3; i++ ){
+        
+        fitFile << fitResult[i] << " ";
+        
+        
+    }
+    
+    //hist->Draw();
+    hist->Delete();
+    
+    // calculate counts in the roi 
+    
+    Double_t roiLL = 7729 - fitResult[nPar+3] / 2;
+    Double_t roiUL = 7729 + fitResult[nPar+3] / 2;
+    
+    TH1F *hist2 = (TH1F*)inF->Get(histString); // again with 1 eV binning
     
     
+    TAxis *axis = hist2->GetXaxis();
+
+    Int_t bmin = axis->FindBin(roiLL);
+    Int_t bmax = axis->FindBin(roiUL);
+
+    Int_t countsROI = hist2->Integral(bmin,bmax);
+
+    fitFile << roiLL << " " << roiUL << " " << countsROI << " " << rebin << endl;
+
+    
+    inF->Close();
+    delete inF;
+    fitFile.close();
+ 
+    
+}
+
+void FitHistogramLoop(Int_t rebin){
+    
+    TString histString;
+    
+    for( Int_t i = 1; i <= 6; i++){
+        
+        
+        histString = Form("withCurrentsdd%d",i);
+        FitHistogram(histString,0,rebin);
+        
+        
+    }
     
     
 }
+
+
+
 void AddCalibrationBranches(Int_t minFileNumber, Int_t maxFileNumber){
     
     // takes the information of many smaller rootfiles and writes the ttree to other rootfiles
