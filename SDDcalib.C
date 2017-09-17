@@ -22,10 +22,11 @@ void SingleSDDCalib( ID nSDD,  ID nPADC,  TString rootf, TString source, TString
     Bool_t   saveflag = kTRUE,  saveplot = kFALSE;
 
     //ofstream logfile;
-    ofstream datafile;
+    //ofstream datafile;
     //logfile.open(WORK_PATH + "/reports/Analysis/logifle.txt",ios::app);
     //datafile.open(WORK_PATH + "/reports/Analysis/BestTimeForRootfile/01day-datafile.txt",ios::app);
-    datafile.open(WORK_PATH + "/calibrationlist/1-618Files-LNGS.txt",ios::app);
+    //datafile.open(WORK_PATH + "/calibrationlist/1-618Files-LNGS.txt",ios::app);
+    //datafile.open(WORK_PATH + "/reports/Analysis/2ndOrderCoeffiecients.txt",ios::app);
     TString fileNamePart = rootf(20,3);
     //cout << fileNamePart << endl;
     Int_t fileNumber = fileNamePart.Atoi();
@@ -53,7 +54,8 @@ void SingleSDDCalib( ID nSDD,  ID nPADC,  TString rootf, TString source, TString
         sdd->GetFitParameters( source );
         sdd->PlotResidue(source);
         sdd->CalcFwhmMn(source);
-        sdd->FitE2ChLine( source );
+        //sdd->FitE2ChLine( source );
+	sdd->FitE2ChPoly( source );
         
         backG   = (Float_t)sdd->GetBackG();
         cukaG   = (Float_t)sdd->GetCuKaG();
@@ -102,7 +104,7 @@ void SingleSDDCalib( ID nSDD,  ID nPADC,  TString rootf, TString source, TString
        //         << cstn << " " << cstnEr << " " << mnka1 << " " << mnka1Er << " " << mny << " " << tika1 << " " << tika1Er << " " << tikay << " " << cuka1 << " " << cuka1Er << " " << backG << " "
         //        << cukaG << " " << chi2 << " " << fstatus << " " << ndf << endl;
         //logfile.close();
-        datafile.close();
+       // datafile.close();
  
     }else{
         fstatus = 9;

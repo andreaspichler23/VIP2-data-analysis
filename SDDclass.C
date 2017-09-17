@@ -2292,6 +2292,248 @@ void SDDclass::FitE2ChLine( TString source) // energy to channel line
 }
 
 
+void SDDclass::FitE2ChPoly( TString source) // energy to channel polynom of 2nd order
+{
+    cout << "# In SDDclass::FitE2ChPoly() ... " << endl;
+ // s.. standard deviation: s = sqrt((df/dx)^2*s(x)^2+....) 
+    // Also plot the linearity of the six ka, kb peaks
+
+
+    if( source != "TiCuZr" ){// For Ti Mn calibration
+
+
+    Double_t  slope = ( pXmnka1 - pXtika1 ) / ( MnKa1 - TiKa1 ); // slope in ch/eV
+    Double_t offset = (pXtika1 * MnKa1 - pXmnka1 * TiKa1)/( MnKa1 - TiKa1 );
+
+    //Double_t  offset  = (-CuKa1*CuKa1 * MnKa1 * pXtika1 + CuKa1 * MnKa1*MnKa1 * pXtika1 - MnKa1*MnKa1 * pXcuka1 * TiKa1 + CuKa1*CuKa1 * pXmnka1 * TiKa1 + MnKa1 * pXcuka1 * TiKa1*TiKa1 - CuKa1 * pXmnka1 * TiKa1*TiKa1)/((-CuKa1 + MnKa1) * (MnKa1 -TiKa1) * (-CuKa1 + TiKa1));
+    //cout << "offset: " << offset << endl; 
+    //Double_t  slope   = (CuKa1^2 (pXmnka1 - pXtika1) + MnKa1^2 (-pXcuka1 + pXtika1) + (pXcuka1 - pXmnka1) TiKa1^2)/((CuKa1 -MnKa1) (CuKa1 - TiKa1) (MnKa1 - TiKa1))
+    //Double_t  slopeSq = ((pXcuka1 - pXtika1)/(CuKa1 - TiKa1) + (-pXmnka1 + pXtika1)/(MnKa1 - TiKa1))/(CuKa1 - MnKa1);
+ 
+    //cout << "2nd order coeff: " << slopeSq << endl;
+    
+    Double_t  slopeEr = sqrt(pXmnka1Er*pXmnka1Er+pXtika1Er*pXtika1Er)/(MnKa1-TiKa1); // error of slope calculated as sqrt of sum of squares of standard deviations from FIT
+
+    Double_t tikb     = (pXmnka1+pXtika1)/2 + (TiKb1-(TiKa1+MnKa1)/2) * slope; // calculated channel number of ti kb relative to mnka1 and tika1
+    Double_t tikbEr   = 1/2*sqrt(sq(pXmnka1Er)+sq(pXtika1Er)+4*sq(TiKb1-(TiKa1+MnKa1)/2)*sq(slopeEr)); // changed here to slopeEr^2 !! sq(x) means squared - defined in common.h
+ // apart from that it should be ok
+    Double_t tikbChEr = sqrt( sq(tikbEr) + sq(pXtikb1Er) ); // pXtikb1Er is given by fit - when you subtract the 2 errors of the 2 values from each other (for the plot) - the re
+// sulting value has this uncertainty
+    Double_t mnkb     = (pXmnka1+pXtika1)/2 + (MnKb1-(TiKa1+MnKa1)/2) * slope; 
+    Double_t mnkbEr   = 1/2*sqrt(sq(pXmnka1Er)+sq(pXtika1Er)+4*sq(MnKb1-(TiKa1+MnKa1)/2)*sq(slopeEr));
+    Double_t mnkbChEr = sqrt( sq(mnkbEr) + sq(pXmnkb1Er) );
+    Double_t tika = 0.,     cukb = 0.;
+    Double_t tikaEr = 0.,   cukbEr   = 0.;
+    Double_t tikaChEr = 0., cukbChEr = 0.;
+
+
+    pX[0] = TiKa1; pX[1] = TiKb1; pX[2] = MnKa1; pX[3] = MnKb1; pX[4] = 0; pX[5] = 0;
+    pY[0] = pXtika1; pY[1] = pXtikb1; pY[2] = pXmnka1; pY[3] = pXmnkb1; pY[4] = 0; pY[5] = 0;
+    //pXEr = {0} in SDDclass.h
+    pYEr[0] = pXtika1Er; pYEr[1] = pXtikb1Er; pYEr[2] = pXmnka1Er; pYEr[3] = pXmnkb1Er; pYEr[4] = 0; pYEr[5] = 0;
+     
+    pXmn[0] = TiKa1; pXmn[1] = TiKb1; pXmn[2] = MnKa1; pXmn[3] = MnKb1; pXmn[4] = 0; pXmn[5] =  0;
+    pYmn[0] = 0.; pYmn[1] = pXtikb1-tikb; pYmn[2] = 0; pYmn[3] = pXmnkb1-mnkb; pYmn[4] = 0.; pYmn[5] = 0;// difference of fitted channel to where the peak should be according to MnKa1 and TiKa1 positions; value of Kb difference is positive when the fit calculated a value that is too high!!
+
+    // in SDDclass.h Double_t pXmnEr[6] = {0.};    
+    pYmnEr[0] = pXtika1Er; pYmnEr[1] = tikbChEr; pYmnEr[2] = pXmnka1Er; pYmnEr[3] = mnkbChEr; pYmnEr[4] = 0.; pYmnEr[5] = 0.;// Ka channel errors given by fit (pXtika1Er) and Kb error given by combined error of fit and kb channel calculation
+
+    
+
+    
+   if(source == "TiMnCu" ){
+        //slope = ( pXcuka1 - pXmnka1 ) / ( CuKa1 - MnKa1 );
+        //slopeEr = sqrt(pXcuka1Er*pXcuka1Er+pXmnka1Er*pXmnka1Er)/(CuKa1-MnKa1);
+
+        //pX[0] = CuKa1;      pY[0] = pXcuka1;     pYEr[0] = pXcuka1Er;
+       
+
+        Double_t cuka     = (pXtika1+pXmnka1)/2 + (CuKa1-(MnKa1+TiKa1)/2) * slope; 
+        Double_t cukaEr   = 1/2*sqrt(sq(pXtika1Er)+sq(pXmnka1Er)+4*sq(CuKa1-(MnKa1+TiKa1)/2)*sq(slopeEr));
+        Double_t cukaChEr = sqrt( sq(cukaEr) + sq(pXcuka1Er) );
+	Double_t cukb     = (pXmnka1+pXtika1)/2 + (CuKb1-(TiKa1+MnKa1)/2) * slope;
+	Double_t cukbEr   = 1/2*sqrt(sq(pXmnka1Er)+sq(pXtika1Er)+4*sq(CuKb1-(TiKa1+MnKa1)/2)*sq(slopeEr));
+	Double_t cukbChEr = sqrt( sq(cukbEr) + sq(pXcukb1Er) );
+
+        pXmn[4] =  CuKa1; pXmn[5] = CuKb1;
+        pYmn[4] = pXcuka1 - cuka; pYmn[5] = pXcukb1 - cukb; 
+        pYmnEr[4] = cukaChEr; pYmnEr[5] = cukbChEr; 
+
+        pX[4] = CuKa1; pX[5] = CuKb1;
+	pY[4] = pXcuka1; pY[5] = pXcukb1;
+	pYEr[4] = pXcuka1Er; pYEr[5] = pXcukb1Er;
+
+        //pX_poly[0] = TiKa1; pX_poly[1] = MnKa1; pX_poly[2] = CuKa1;
+        //pY_poly[0] = pXtika1; pY_poly[1] = pXmnka1; pY_poly[2] = pXcuka1;
+	pX_line[0] = TiKa1; pX_line[1] = MnKa1;
+        pY_line[0] = pXtika1; pY_line[1] = pXmnka1;	
+
+	ev2chSq = (pXcuka1 - (offset + slope * CuKa1)) / (( CuKa1 - MnKa1 ) * ( CuKa1 - MnKa1 ));
+
+
+    }
+
+   } // end of the if statement for the ti mn source cases
+
+  else{ // beginning of ti cu zr x ray tube calibration
+
+
+    Double_t  slope = ( pXzrka1 - pXtika1 ) / ( ZrKa1 - TiKa1 ); // slope in ch/eV
+
+    Double_t  slopeEr = sqrt(pXzrka1Er*pXzrka1Er+pXtika1Er*pXtika1Er)/(ZrKa1-TiKa1); // error of slope calculated as sqrt of sum of squares of standard deviations from FIT
+
+    Double_t tikb     = (pXzrka1+pXtika1)/2 + (TiKb1-(TiKa1+ZrKa1)/2) * slope; // calculated channel number of ti kb1 relative to zrka1 and tika1
+    Double_t tikbEr   = 1/2*sqrt(sq(pXzrka1Er)+sq(pXtika1Er)+4*sq(TiKb1-(TiKa1+ZrKa1)/2)*sq(slopeEr)); // changed here to slopeEr^2 !! sq(x) means squared - defined in common.h
+ // apart from that it should be ok
+    Double_t tikbChEr = sqrt( sq(tikbEr) + sq(pXtikb1Er) ); // pXtikb1Er is given by fit - when you subtract the 2 errors of the 2 values from each other (for the plot) - the re
+// sulting value has this uncertainty
+
+    Double_t zrkb     = (pXzrka1+pXtika1)/2 + (ZrKb1-(TiKa1+ZrKa1)/2) * slope; 
+    Double_t zrkbEr   = 1/2*sqrt(sq(pXzrka1Er)+sq(pXtika1Er)+4*sq(ZrKb1-(TiKa1+ZrKa1)/2)*sq(slopeEr));
+    Double_t zrkbChEr = sqrt( sq(zrkbEr) + sq(pXzrkb1Er) );
+
+    Double_t cuka     = (pXtika1+pXzrka1)/2 + (CuKa1-(ZrKa1+TiKa1)/2) * slope; //calculated channel number of cu ka1 relative to zr and ti
+    Double_t cukaEr   = 1/2*sqrt(sq(pXtika1Er)+sq(pXzrka1Er)+4*sq(CuKa1-(ZrKa1+TiKa1)/2)*sq(slopeEr));
+    Double_t cukaChEr = sqrt( sq(cukaEr) + sq(pXcuka1Er) );
+    Double_t cukb     = (pXzrka1+pXtika1)/2 + (CuKb1-(TiKa1+ZrKa1)/2) * slope;
+    Double_t cukbEr   = 1/2*sqrt(sq(pXzrka1Er)+sq(pXtika1Er)+4*sq(CuKb1-(TiKa1+ZrKa1)/2)*sq(slopeEr));
+    Double_t cukbChEr = sqrt( sq(cukbEr) + sq(pXcukb1Er) );
+
+    Double_t tika = 0.;
+    Double_t tikaEr = 0.;
+    Double_t tikaChEr = 0.;
+
+    
+
+    pX[0] = TiKa1; pX[1] = TiKb1; pX[2] = CuKa1; pX[3] = CuKb1; pX[4] = ZrKa1; pX[5] = ZrKb1;
+    pY[0] = pXtika1; pY[1] = pXtikb1; pY[2] = pXcuka1; pY[3] = pXcukb1; pY[4] = pXzrka1; pY[5] = pXzrkb1;
+    //pXEr = {0} in SDDclass.h
+    pYEr[0] = pXtika1Er; pYEr[1] = pXtikb1Er; pYEr[2] = pXcuka1Er; pYEr[3] = pXcukb1Er; pYEr[4] = pXzrka1Er; pYEr[5] = pXzrkb1Er;
+     
+    pXmn[0] = TiKa1; pXmn[1] = TiKb1; pXmn[2] = CuKa1; pXmn[3] = CuKb1; pXmn[4] = ZrKa1; pXmn[5] =  ZrKb1;
+    pYmn[0] = 0.; pYmn[1] = pXtikb1-tikb; pYmn[2] = pXcuka1-cuka; pYmn[3] = pXcukb1-cukb; pYmn[4] = 0.; pYmn[5] = pXzrkb1-zrkb;// difference of fitted channel to where the peak should be according to MnKa1 and TiKa1 positions; value of Kb difference is positive when the fit calculated a value that is too high!!
+
+    // in SDDclass.h Double_t pXmnEr[6] = {0.};    
+    pYmnEr[0] = pXtika1Er; pYmnEr[1] = tikbChEr; pYmnEr[2] = 0.; pYmnEr[3] = 0.; pYmnEr[4] = pXzrka1Er; pYmnEr[5] = zrkbChEr;// Ka channel errors given by fit (pXtika1Er) and Kb error given by combined error of fit and kb channel calculation
+
+    pX_line[0] = TiKa1; pX_line[1] = ZrKa1;
+    pY_line[0] = pXtika1; pY_line[1] = pXzrka1;	
+
+    //pX_poly[0] = TiKa1; pX_poly[1] = CuKa1; pX_poly[2] = ZrKa1;
+    //pY_poly[0] = pXtika1; pY_poly[1] = pXcuka1; pY_poly[2] = pXzrka1;
+
+  } // end of the if statement for the X ray tube ti zr calibration
+
+
+    
+
+    TGraphErrors *gre2cerr = new TGraphErrors(6, pX, pY, pXEr, pYEr ); // graph eV 2 channel with errors
+    TGraphErrors *grmn  = new TGraphErrors(6, pXmn, pYmn, pXmnEr, pYmnEr ); // graph with how far from the expected channels some peaks are
+    TGraph *gre2c = new TGraph(2,pX_line,pY_line); // graph eV 2 channel
+
+    fe2c = new TF1("fe2c", peakLine, 500, 20000, 2); //  eV 2 ch line
+    fe2c->SetNpx(1000);
+
+    ctmp->cd(2);
+    gStyle->SetLabelSize(0.05, "x");
+    gStyle->SetLabelSize(0.05, "y");
+    gPad->SetTicks();
+    gPad->SetGridy();
+    gPad->SetGridx();
+    gre2cerr->SetMarkerStyle(20);
+    gre2cerr->SetMarkerColor(4);
+    gre2cerr->Draw("AP");
+    gre2cerr->SetTitle("ev to channel");
+    gre2cerr->GetXaxis()->SetTitle("Energy [eV]");
+    gre2cerr->GetXaxis()->SetTitleSize(0.05);
+    gre2cerr->GetYaxis()->SetTitle("ADC Channel");
+    gre2cerr->GetYaxis()->SetTitleSize(0.05);
+    gre2cerr->Draw("AP");
+    gre2c->SetMarkerStyle(20);
+    gre2c->SetMarkerColor(4);
+    gre2c->Fit("fe2c", "R");
+    gre2c->Draw("same");
+
+    offsetE2 = fe2c->GetParameter(0); // here the offset and the ev2ch ratio are calculated
+    ev2ch  = fe2c->GetParameter(1); // in ch/eV
+    //ev2chSq  = fe2c->GetParameter(2);
+    offsetE2Er = fe2c->GetParError(0);
+    ev2chEr  = fe2c->GetParError(1);
+    //ev2chSqEr  = fe2c->GetParError(2);
+
+    ofstream datafile;
+    datafile.open(WORK_PATH + "/reports/Analysis/2ndOrderCoeffiecients.txt",ios::app);
+    
+    datafile << offsetE2 << " " << offset << " " << ev2ch << " " << ev2chSq << endl;
+
+    datafile.close();
+    
+    ctmp->cd(1);
+    gStyle->SetLabelSize(0.05, "x");
+    gStyle->SetLabelSize(0.05, "y");
+    gPad->SetTicks();
+    gPad->SetGridy();
+    gPad->SetGridx();
+    grmn ->SetMarkerStyle(20);
+    grmn ->SetMarkerColor(4);
+    grmn ->SetMarkerSize(1);
+    grmn ->GetXaxis()->SetTitle("Energy [eV]");
+    grmn ->GetXaxis()->SetTitleSize(0.05);
+    grmn ->GetYaxis()->SetTitle("ADC Channel");
+    grmn ->GetYaxis()->SetTitleSize(0.05);
+    grmn ->SetTitle("Two sources calib linearity");
+    grmn ->Draw("AP");
+    ctmp->Update();
+
+    //Draw the energy scale histogram
+    Double_t bin_ev = 0.;
+
+    froot = new TFile( rootfile, "READ" );
+
+    Double_t bin_number = 3000;
+    Double_t low_edge = -0.5;
+    Double_t high_edge = -0.5 + bin_number * 1./ev2ch;
+    
+    hev = new TH1F("hev", "Energy spectrum", bin_number, low_edge, high_edge);
+
+    TTree *tr_t = (TTree*)froot->Get("tr");
+    Int_t ent = (Int_t)tr_t->GetEntries();
+
+    TBranch *adcEvent   = tr_t->GetBranch("adc");
+    adcEvent->SetAddress(adc);
+
+
+    for( Int_t ient=0; ient<ent; ient++ ){
+        adcEvent->GetEntry(ient);
+        if( adc[padc_ch] > 200 ){
+            bin_ev = ( adc[padc_ch] - offset ) / ev2ch; 
+            hev->Fill(bin_ev);
+        }
+    }
+    //hev->Rebin(10);
+
+    cev->cd();
+    gStyle->SetLabelSize(0.04, "x");
+    gStyle->SetLabelSize(0.04, "y");
+    gPad->SetGridy();
+    gPad->SetGridx();
+    gPad->SetLogy(); 
+    
+
+    hev->GetXaxis()->SetTitle("Energy [eV]");
+    hev->GetXaxis()->SetLabelSize(0.04);
+    hev->SetStats(0);
+    hev->Draw(); //here the energy histogram should be drawn to the canvas
+    cev->Update();
+
+   // TFile hist_file("/home/andreas/vip2/reports/1608_VIPReportLNF/sdd1LNGS.root", "RECREATE");
+   // hev->Write();  
+    //hist_file.close();
+
+    return ;
+}
+
+
 void SDDclass::OpenCanvas()
 {
     c1   = new TCanvas("c1",Form("bus%did%02d", bus, id), 
