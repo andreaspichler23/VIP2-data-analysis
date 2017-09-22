@@ -38,6 +38,36 @@ tr->Draw("adc[3]>>htemp(500,0,4200)","tdc[13]>5000 && adc[3]>80")
 tr->Draw("adc[3]>>htemp1(500,0,4200)","tdc[13]>5000", "same")
 */
 
+void calcBeta(Int_t signalCounts, Int_t backGCounts, Double_t detEff, Double_t deltaT, Double_t current, Double_t lengthT, Int_t upLimitBayes = -1 ){
+    
+    //calcBeta(4667,4346,0.01,81.42,100,0.1)
+    //calcBeta(4667,4346,0.01,81.42,100,0.1,582)
+    
+    Double_t meanFree = 3.9; // x 10-8
+    Double_t eCharge  = 1.6; // x 10-19
+    Double_t absProb  = 0.1;
+    
+    Double_t mpv = signalCounts - backGCounts;
+    
+    Double_t sigma = TMath::Sqrt(signalCounts + backGCounts);
+    
+    Double_t upLimit = mpv + 3 * sigma;
+    //Double_t upLimit = 3 * sigma;
+
+    
+    if( upLimitBayes != -1 ){ upLimit = upLimitBayes; }
+    
+    Double_t multFactor = ((1/absProb) * meanFree * eCharge) / ( lengthT * current * deltaT * 86400 * detEff );
+    
+    Double_t beta22 = upLimit * multFactor;
+    
+    cout << "most probable value for detected non-Paulin transitions: " << mpv << " +/- " << sigma << endl << endl;
+    
+    cout << "upper limit of counts: " << upLimit << endl;
+    cout << "beta2/2 = " << beta22 * 100 << " * 10^-29 "<< endl; 
+    
+    
+}
 
 
 void AddSubtrHistograms(){
@@ -125,99 +155,6 @@ void SaveFinalHistograms(){
     
 }
 
-void CalcROICounts(){
-    
-    // adjust runTime und histString
-    
-    TFile *f = new TFile("/home/andreas/vip2/data/root/LNGS/1-618files-final/energyHistograms.root");
-    
-    TString withString = "with";
-    TString noString = "no";
-    TString histString;
-    TString saveString;
-    
-    
-    Double_t roiCounts[6];
-    Double_t sourceCounts[6];
-    
-    Int_t maxBinNumber = 9002;
-    Int_t binCenter, binContent;
-    Int_t roiLL = 7629;
-    Int_t roiUL = 7829;
-    
-    Int_t sourceLL = 4000;
-    Int_t sourceUL = 6700;
-    
-    //Int_t counter = 0;
-    Double_t totalRoi = 0;
-    Double_t totalSource = 0;
-    
-    Double_t runTime = 81.4166;
-    //Double_t runTime = 116.833;
-    
-    for( Int_t sdd = 1; sdd <= 6; sdd++){
-    
-        
-        histString = Form(withString + "Currentsdd" + "%d", sdd );
-        //cout << histString << endl;
-        TH1F *h = (TH1F*)f->Get(histString);
-        
-        
-        roiCounts[sdd-1] = 0;
-        
-        
-        for( Int_t binNumber = 1; binNumber <= maxBinNumber; binNumber++ ){
-            
-            binCenter = h->GetBinCenter(binNumber);
-            
-            
-            
-            if( binCenter > roiLL && binCenter < roiUL ){
-                
-                binContent = h -> GetBinContent(binNumber);
-               // counter += 1;
-                roiCounts[sdd-1] += binContent;
-                
-                //cout << binContent << " " << counter << endl;
-                
-            }
-            
-            
-            if( binCenter > sourceLL && binCenter < sourceUL ){
-                
-                binContent = h -> GetBinContent(binNumber);
-               // counter += 1;
-                sourceCounts[sdd-1] += binContent;
-                
-                //cout << binContent << " " << counter << endl;
-                
-            }
-            
-            
-        }
-        
-        //roiCounts[sdd-1] /= runTime;
-        
-        h->Delete();
-        cout << "sdd: " << sdd << " ROI counts: " <<  " " << roiCounts[sdd-1] << endl;
-        cout << "sdd: " << sdd << " source counts: " <<  " " << sourceCounts[sdd-1] << endl;
-        totalRoi += roiCounts[sdd-1];
-        totalSource += sourceCounts[sdd-1];
-
-    
-    }
-    cout << "hist of sdd 6 name: " << histString << endl;
-    cout << "run time: " << runTime << endl;
-    
-    cout << "total counts ROI: " << totalRoi <<endl;
-    cout << "total counts source: " << totalSource <<endl;
-    
-    //cout << "counts: " << roiCounts[0] << endl;
-    //cout << saveString << endl;
-    //h->Draw();
-    
-    
-}
 
 
 TH1F* HistoFromTree(TString rootfile, TString place, Int_t sdd){ // not working for SMI because of the adc -> padc TBranch  name and size change
@@ -360,7 +297,7 @@ void SaveFinalHisto(TString inFile, TString outFile, TString place){
   sumH->Add(sdd3H);
   sumH->Add(sdd4H);
   sumH->Add(sdd5H);
-  sumH->Add(sdd1H);
+  sumH->Add(sdd6H);
   //sdd1H->Draw();
   //sumH->Draw();
   outF->cd();

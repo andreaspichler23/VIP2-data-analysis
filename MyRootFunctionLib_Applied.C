@@ -31,6 +31,39 @@
 #include  "CalibFunction.C"
 #include  "MyRootFunctionLib_Basic.C"
 
+void fitGaussSubHist(TString histName, Int_t rebin){
+    
+    //fitGaussSubHist("SubHistSum",25)
+    
+    TFile *fin = new TFile("/home/andreas/vip2/data/root/LNGS/1-618files-final/energyHistograms.root");
+    
+    TH1F *subH = (TH1F*)fin->Get(histName);
+    subH->Rebin(rebin);
+    
+    Int_t ll = 7500;
+    Int_t ul = 7900;
+    
+    TF1 *fitFunc = new TF1("fitFunc", gaussFunc, ll, ul, 3 );
+    
+    fitFunc->FixParameter(1,7729);
+    fitFunc->FixParameter(2,85);
+    
+    fitFunc->SetParameter(0,1000);;
+    subH->GetXaxis()->SetRangeUser(ll,ul);
+    subH->Fit("fitFunc","RI");
+    
+    Double_t mpv = fitFunc->GetParameter(0);   
+    mpv = mpv / rebin;
+    
+    Double_t sigma = fitFunc->GetParError(0);
+    sigma = TMath::Sqrt(sigma / rebin);
+    
+    cout << " Pauli violating counts: " << mpv << " +- " << sigma << endl;
+    
+    subH->Draw();
+    
+}
+
 void FitHistogram(  TString histString, Int_t savePlot, Int_t rebin ){
     
     
@@ -39,7 +72,7 @@ void FitHistogram(  TString histString, Int_t savePlot, Int_t rebin ){
     Int_t upperL = 9500;
     Int_t nPar = 11;
     
-    Double_t fitResult[nPar+2];
+    Double_t fitResult[nPar+4];
     
     ofstream fitFile;
     fitFile.open("/home/andreas/vip2/reports/Analysis/CuFitFile.txt",ios::app);
@@ -116,40 +149,44 @@ void FitHistogram(  TString histString, Int_t savePlot, Int_t rebin ){
     fitResult[nPar+2]   = fitResult[nPar]/fitResult[nPar+1];
     fitResult[nPar+3]   = fitResult[3] * 2.355;
     
-    //cout << fitResult[3] << " " << fitResult[nPar+3]<< endl;
     
-    fitFile << histString << " ";
+    
+    //fitFile << histString << " ";
     
     cout << "fwhm is: " << fitResult[nPar+3] << " eV!" << endl;
     
     for( Int_t i = 0; i <= nPar+3; i++ ){
         
-        fitFile << fitResult[i] << " ";
+        //fitFile << fitResult[i] << " ";
         
         
     }
-    
+    fitFile << endl;
     //hist->Draw();
-    hist->Delete();
+    
+    
     
     // calculate counts in the roi 
     
-    Double_t roiLL = 7729 - fitResult[nPar+3] / 2;
-    Double_t roiUL = 7729 + fitResult[nPar+3] / 2;
-    
-    TH1F *hist2 = (TH1F*)inF->Get(histString); // again with 1 eV binning
-    
-    
-    TAxis *axis = hist2->GetXaxis();
-
-    Int_t bmin = axis->FindBin(roiLL);
-    Int_t bmax = axis->FindBin(roiUL);
-
-    Int_t countsROI = hist2->Integral(bmin,bmax);
-
-    fitFile << roiLL << " " << roiUL << " " << countsROI << " " << rebin << endl;
-
-    
+//    Double_t roiLL = 7729 - fitResult[nPar+3] / 2;
+//    Double_t roiUL = 7729 + fitResult[nPar+3] / 2;
+//    
+//    hist->Delete();
+//    //delete hist;
+//    
+//    TH1F *hist2 = (TH1F*)inF->Get(histString); // again with 1 eV binning
+//    
+//    
+//    TAxis *axis = hist2->GetXaxis();
+//
+//    Int_t bmin = axis->FindBin(roiLL);
+//    Int_t bmax = axis->FindBin(roiUL);
+//
+//    Int_t countsROI = hist2->Integral(bmin,bmax);
+//
+//    fitFile << roiLL << " " << roiUL << " " << countsROI << " " << rebin << endl;
+//
+//    hist2->Delete();
     inF->Close();
     delete inF;
     fitFile.close();
@@ -165,15 +202,267 @@ void FitHistogramLoop(Int_t rebin){
         
         
         histString = Form("withCurrentsdd%d",i);
+        cout << endl << histString << " START" << endl;
         FitHistogram(histString,0,rebin);
         
         
     }
     
+    histString = "withCurrentSum";
+    cout << endl << histString << " START" << endl;
+    FitHistogram(histString,0,rebin);
+    
+    for( Int_t i = 1; i <= 6; i++){
+        
+        
+        histString = Form("noCurrentSmallsdd%d",i);
+        cout << endl << histString << " START" << endl;
+        FitHistogram(histString,0,rebin);
+        
+        
+    }
+    
+    histString = "noCurrentSmallSum";
+    cout << endl << histString << " START" << endl;
+    FitHistogram(histString,0,rebin);
+
     
 }
 
+Double_t calcRoiContribution(Double_t mean, Double_t gain, Double_t sigma, Int_t roiLL, Int_t roiUL, Int_t rebin){
+    
+    //TF1 *gaussian = new TF1("gaussian","gaus(0)",7000,9000);
+    
 
+    TF1 *gaussian = new TF1("gaussian",gaussFunc,7000,9000,3);
+    
+    gaussian->SetParameter(0,gain);
+    gaussian->SetParameter(1,mean);
+    gaussian->SetParameter(2,sigma);
+    
+    Double_t cont = gaussian->Integral(roiLL,roiUL);
+    
+    cont = cont / rebin;
+    
+    //gaussian->Draw();
+    
+    return cont;
+    
+}
+
+void calcROICounts(){
+    
+    // adjust runTime und histString
+    
+    TFile *f = new TFile("/home/andreas/vip2/data/root/LNGS/1-618files-final/energyHistograms.root");
+    
+    ifstream cuFitFile;
+    cuFitFile.open("/home/andreas/vip2/reports/Analysis/CuFitFile.txt");
+    Double_t calibList[210];
+    
+    TString withString = "with";
+    TString noString = "no";
+    TString histString;
+    TString saveString;
+    
+    
+    Double_t roiCountsWith[6], roiCountsNo[6];
+    
+    Int_t maxBinNumber = 9002;
+    Double_t binCenter;
+    Int_t binContent;
+    Int_t roiLL = 7629;
+    Int_t roiUL = 7829;
+    
+    Int_t sourceLL = 4000;
+    Int_t sourceUL = 6700;
+    
+    Int_t counter = 0;
+    Double_t totalRoiWith = 0;
+    Double_t totalRoiNo = 0;
+    
+    // read the calibration data
+    
+    for(Int_t i = 0; i <= 210; i++ ){
+        
+        cuFitFile >> calibList[i];
+  
+    }
+
+    
+    for( Int_t sdd = 1; sdd <= 6; sdd++){
+
+        histString = Form(withString + "Currentsdd" + "%d", sdd );
+        //cout << histString << endl;
+        TH1F *withH = (TH1F*)f->Get(histString);
+        
+        roiCountsWith[sdd-1] = 0;
+
+        for( Int_t binNumber = 1; binNumber <= maxBinNumber; binNumber++ ){
+            
+            binCenter = withH->GetBinCenter(binNumber);
+
+            if( binCenter > roiLL && binCenter < roiUL ){
+                
+                //cout << binCenter << endl;
+                binContent = withH -> GetBinContent(binNumber);
+               // counter += 1;
+                roiCountsWith[sdd-1] += binContent;
+                
+                //cout << binContent << " " << counter << endl;
+                
+            }
+
+        }
+
+        withH->Delete();
+        cout << "sdd: " << sdd << " ROI counts with Current: " <<  " " << roiCountsWith[sdd-1] << endl;
+        totalRoiWith += roiCountsWith[sdd-1];
+    
+    }
+    
+    for( Int_t sdd = 1; sdd <= 6; sdd++){
+
+        histString = Form(noString + "CurrentSmallsdd" + "%d", sdd );
+        //cout << histString << endl;
+        TH1F *noH = (TH1F*)f->Get(histString);
+        
+        roiCountsNo[sdd-1] = 0;
+
+        for( Int_t binNumber = 1; binNumber <= maxBinNumber; binNumber++ ){
+            
+            binCenter = noH->GetBinCenter(binNumber);
+
+            if( binCenter > roiLL && binCenter < roiUL ){
+                
+                binContent = noH -> GetBinContent(binNumber);
+               // counter += 1;
+                roiCountsNo[sdd-1] += binContent;
+                
+                //cout << binContent << " " << counter << endl;
+                
+            }
+
+        }
+
+        noH->Delete();
+        cout << "sdd: " << sdd << " ROI counts no Current: " <<  " " << roiCountsNo[sdd-1] << endl;
+        totalRoiNo += roiCountsNo[sdd-1];
+    
+    }
+    
+    TH1F *noHSum = (TH1F*)f->Get("noCurrentSmallSum");
+    TH1F *withHSum = (TH1F*)f->Get("withCurrentSum");
+    
+    
+    Double_t lowBin, highBin;
+    
+    lowBin = noHSum->FindBin(roiLL);
+    highBin = noHSum->FindBin(roiUL);
+    
+    Double_t binCenterL = withHSum->GetBinCenter(lowBin);
+    Double_t binCenterH = withHSum->GetBinCenter(highBin-1);
+    
+    Double_t binContentL = noHSum->GetBinContent(lowBin);
+    Double_t binContentH = noHSum->GetBinContent(highBin-1);
+    
+    Double_t noSum = noHSum->Integral(lowBin,highBin-1);
+    Double_t withSum = withHSum->Integral(lowBin,highBin-1);
+    
+    // start removing the tails of Cu and Ni from the ROI counts ---------------------------
+    
+    Double_t cuGainWith = calibList[(6*15+2) - 1];
+    Double_t cuGainNo   = calibList[(13*15+2) - 1];
+    
+    Double_t niGainWith = calibList[(6*15+8) - 1];
+    Double_t niGainNo   = calibList[(13*15+8) - 1];
+    
+    Double_t cuSigmaWith = calibList[(6*15+4) - 1];
+    Double_t cuSigmaNo   = calibList[(13*15+4) - 1];
+    
+    Double_t niSigmaWith = calibList[(6*15+10) - 1];
+    Double_t niSigmaNo   = calibList[(13*15+10) - 1];
+    
+    Double_t cuMeanWith = calibList[(6*15+3) - 1];
+    Double_t cuMeanNo   = calibList[(13*15+3) - 1];
+    
+    Double_t niMeanWith = calibList[(6*15+9) - 1];
+    Double_t niMeanNo   = calibList[(13*15+9) - 1];
+    
+    
+    //cout << cuSigmaWith << " " << cuSigmaNo << " " << niSigmaWith << " " << niSigmaNo << " " <<  cuMeanWith << " " << cuMeanNo << " " << niMeanWith << " " << niMeanNo << endl;
+    
+    Double_t cuka1WithCont = calcRoiContribution(cuMeanWith, cuGainWith, cuSigmaWith, 7629, 7829, 25);
+    Double_t cuka2WithCont = calcRoiContribution(cuMeanWith-19.95, cuGainWith * 0.51, cuSigmaWith, 7629, 7829, 25);
+    
+    Double_t nika1WithCont = calcRoiContribution(niMeanWith, niGainWith, niSigmaWith, 7629, 7829, 25);
+    Double_t nika2WithCont = calcRoiContribution(niMeanWith-17.26, niGainWith * 0.51, niSigmaWith, 7629, 7829, 25);
+    
+    Double_t totWithCont = cuka1WithCont + cuka2WithCont + nika1WithCont + nika2WithCont;
+    
+    // ---------------------- no current contribution
+    
+    Double_t cuka1NoCont = calcRoiContribution(cuMeanNo, cuGainNo, cuSigmaNo, 7629, 7829, 25);
+    Double_t cuka2NoCont = calcRoiContribution(cuMeanNo-19.95, cuGainNo * 0.51, cuSigmaNo, 7629, 7829, 25);
+    
+    Double_t nika1NoCont = calcRoiContribution(niMeanNo, niGainNo, niSigmaNo, 7629, 7829, 25);
+    Double_t nika2NoCont = calcRoiContribution(niMeanNo-17.26, niGainNo * 0.51, niSigmaNo, 7629, 7829, 25);
+    
+    Double_t totNoCont = cuka1NoCont + cuka2NoCont + nika1NoCont + nika2NoCont;
+    
+    Double_t subtrCountsWithout = noSum - totNoCont;
+    Double_t subtrCountsWith    = withSum - totWithCont;
+
+    
+    //cout << "total counts ROI with current: " << totalRoiWith <<endl;
+    //cout << "total counts ROI no current: " << totalRoiNo <<endl;
+    
+    cout << "cu ka1 contribution in roi with current: " << cuka1WithCont << endl;
+    cout << "cu ka2 contribution in roi with current: " << cuka2WithCont << endl;
+    
+    cout << "ni ka1 contribution in roi with current: " << nika1WithCont << endl;
+    cout << "ni ka2 contribution in roi with current: " << nika2WithCont << endl;
+    
+    cout << "cu ka1 contribution in roi without current: " << cuka1NoCont << endl;
+    cout << "cu ka2 contribution in roi without current: " << cuka2NoCont << endl;
+    
+    cout << "ni ka1 contribution in roi without current: " << nika1NoCont << endl;
+    cout << "ni ka2 contribution in roi without current: " << nika2NoCont << endl;
+    
+    cout << "tot contribution with current: " << totWithCont<< endl;
+    cout << "tot contribution without current: " << totNoCont<< endl << endl;
+    
+    cout << "total counts ROI no current: " << noSum <<endl;
+    cout << "total counts ROI with current: " << withSum <<endl;
+    
+    cout << "total counts ROI no current minus gaussian contributions: " << subtrCountsWithout <<endl;
+    cout << "total counts ROI with current minus gaussian contributions: " << subtrCountsWith <<endl;
+    
+    
+    cuFitFile.close();
+    f->Close();
+    
+    
+
+}
+
+Double_t calcEnergy(Short_t channel, Double_t slope, Double_t offset, Double_t Ord2Coeff){
+    
+    
+    Double_t energy = -( slope - 2*Ord2Coeff*MnKa1-TMath::Sqrt(4*Ord2Coeff*channel-4*Ord2Coeff*offset+slope*slope-4*Ord2Coeff*slope*MnKa1))/( 2*Ord2Coeff );
+    
+    return energy;
+    
+}
+
+Double_t calcChannelWidth(Double_t energy, Double_t slope, Double_t Ord2Coeff){
+    
+    Double_t channelWidth = 1 / (slope + 2 * Ord2Coeff * (energy - MnKa1) );
+    
+    //cout << slope << " " << Ord2Coeff << " " << energy << " " << channelWidth << endfcalcroil;
+    
+    return channelWidth;
+}
 
 void AddCalibrationBranches(Int_t minFileNumber, Int_t maxFileNumber){
     
@@ -190,7 +479,11 @@ void AddCalibrationBranches(Int_t minFileNumber, Int_t maxFileNumber){
     TString fileName, rootFileName, writeFileName;
     TRandom3 randG;
     Double_t randN;
+    Int_t current;
+    Double_t energyTmp, channelWidthTmp;
     
+    Double_t Ord2CoeffWith[6] = {5.34213e-07,1.3487e-07,2.92066e-07,3.57834e-07,5.28058e-07,3.6126e-07};
+    Double_t Ord2CoeffWithout[6] = {3.81858e-07,0.,4.88842e-07,3.11132e-07,4.51601e-07,3.49158e-07};
     
     ifstream calibFile;
     ifstream fileList;
@@ -202,6 +495,9 @@ void AddCalibrationBranches(Int_t minFileNumber, Int_t maxFileNumber){
     for( Int_t fileCount = 1; fileCount <= maxFileNumber; fileCount++){
         
         fileList >> fileName;
+        
+        current = 0;
+        if (fileName.Contains("with")){ current = 1;}
         
         for( Int_t sdd = 1; sdd <= 6; sdd++ ){
 
@@ -259,31 +555,153 @@ void AddCalibrationBranches(Int_t minFileNumber, Int_t maxFileNumber){
             randN = randG.Rndm();
             energyEv[0] = binLowE + randN * ( binHighE - binLowE );
             
-            //cout << adcChannel[0] << " " << binLowE << " " << binHighE << " " << energyEv[0] << " " << randN << endl;
+            if( energyEv[0] > MnKa1 ){
+                
+                if(current == 0){
+                    
+                    energyTmp = calcEnergy(adcChannel[0], calibList[2], calibList[4], Ord2CoeffWithout[0]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[2], Ord2CoeffWithout[0]);
+
+                }else{
+                
+                    energyTmp = calcEnergy(adcChannel[0], calibList[2], calibList[4], Ord2CoeffWith[0]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[2], Ord2CoeffWith[0]);
+
+                }
+
+                binLowE = energyTmp - channelWidthTmp/2;
+                binHighE = energyTmp + channelWidthTmp/2;
+                
+                energyEv[0] = binLowE + randN * ( binHighE - binLowE );
+
+            }
+            
+            
+            
             binLowE = ((adcChannel[2] - calibList[29]) / calibList[27]) - 1/(2 * calibList[27]);
             binHighE = ((adcChannel[2] - calibList[29]) / calibList[27]) + 1/(2 * calibList[27]);
             randN = randG.Rndm();
             energyEv[2] = binLowE + randN * ( binHighE - binLowE );
+            
+            if( (energyEv[2] > MnKa1) && (current == 1) ){ // change here ?? ... for sdd 2 no current the 2nd order parameter == 0 -> linear fit
+
+                if(current == 1){
+                    
+                    energyTmp = calcEnergy(adcChannel[2], calibList[27], calibList[29], Ord2CoeffWithout[1]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[27], Ord2CoeffWithout[1]);
+
+                }
+
+                binLowE = energyTmp - channelWidthTmp/2;
+                binHighE = energyTmp + channelWidthTmp/2;
+                
+                energyEv[2] = binLowE + randN * ( binHighE - binLowE );
+
+            }
             
             binLowE = ((adcChannel[3] - calibList[54]) / calibList[52]) - 1/(2 * calibList[52]);
             binHighE = ((adcChannel[3] - calibList[54]) / calibList[52]) + 1/(2 * calibList[52]);
             randN = randG.Rndm();
             energyEv[3] = binLowE + randN * ( binHighE - binLowE );
             
+            if( energyEv[3] > MnKa1 ){
+                
+                if(current == 0){
+                    
+                    energyTmp = calcEnergy(adcChannel[3], calibList[52], calibList[54], Ord2CoeffWithout[2]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[52], Ord2CoeffWithout[2]);
+
+                }else{
+                
+                    energyTmp = calcEnergy(adcChannel[3], calibList[52], calibList[54], Ord2CoeffWith[2]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[52], Ord2CoeffWith[2]);
+
+                }
+
+                binLowE = energyTmp - channelWidthTmp/2;
+                binHighE = energyTmp + channelWidthTmp/2;
+                
+                energyEv[3] = binLowE + randN * ( binHighE - binLowE );
+
+            }
+            
             binLowE = ((adcChannel[5] - calibList[79]) / calibList[77]) - 1/(2 * calibList[77]);
             binHighE = ((adcChannel[5] - calibList[79]) / calibList[77]) + 1/(2 * calibList[77]);
             randN = randG.Rndm();
             energyEv[5] = binLowE + randN * ( binHighE - binLowE );
+            
+            if( energyEv[5] > MnKa1 ){
+                
+                if(current == 0){
+                    
+                    energyTmp = calcEnergy(adcChannel[5], calibList[77], calibList[79], Ord2CoeffWithout[3]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[77], Ord2CoeffWithout[3]);
+
+                }else{
+                
+                    energyTmp = calcEnergy(adcChannel[5], calibList[77], calibList[79], Ord2CoeffWith[3]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[77], Ord2CoeffWith[3]);
+
+                }
+
+                binLowE = energyTmp - channelWidthTmp/2;
+                binHighE = energyTmp + channelWidthTmp/2;
+                
+                energyEv[5] = binLowE + randN * ( binHighE - binLowE );
+
+            }
             
             binLowE = ((adcChannel[6] - calibList[104]) / calibList[102]) - 1/(2 * calibList[102]);
             binHighE = ((adcChannel[6] - calibList[104]) / calibList[102]) + 1/(2 * calibList[102]);
             randN = randG.Rndm();
             energyEv[6] = binLowE + randN * ( binHighE - binLowE );
             
+            if( energyEv[6] > MnKa1 ){
+                
+                if(current == 0){
+                    
+                    energyTmp = calcEnergy(adcChannel[6], calibList[102], calibList[104], Ord2CoeffWithout[4]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[102], Ord2CoeffWithout[4]);
+
+                }else{
+                
+                    energyTmp = calcEnergy(adcChannel[6], calibList[102], calibList[104], Ord2CoeffWith[4]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[102], Ord2CoeffWith[4]);
+
+                }
+
+                binLowE = energyTmp - channelWidthTmp/2;
+                binHighE = energyTmp + channelWidthTmp/2;
+                
+                energyEv[6] = binLowE + randN * ( binHighE - binLowE );
+
+            }
+            
             binLowE = ((adcChannel[7] - calibList[129]) / calibList[127]) - 1/(2 * calibList[127]);
             binHighE = ((adcChannel[7] - calibList[129]) / calibList[127]) + 1/(2 * calibList[127]);
             randN = randG.Rndm();
             energyEv[7] = binLowE + randN * ( binHighE - binLowE );
+            
+            if( energyEv[7] > MnKa1 ){
+                
+                if(current == 0){
+                    
+                    energyTmp = calcEnergy(adcChannel[7], calibList[127], calibList[129], Ord2CoeffWithout[5]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[127], Ord2CoeffWithout[5]);
+
+                }else{
+                
+                    energyTmp = calcEnergy(adcChannel[7], calibList[127], calibList[129], Ord2CoeffWith[5]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[127], Ord2CoeffWith[5]);
+
+                }
+
+                binLowE = energyTmp - channelWidthTmp/2;
+                binHighE = energyTmp + channelWidthTmp/2;
+                
+                energyEv[7] = binLowE + randN * ( binHighE - binLowE );
+
+            }
             
             
 
@@ -312,11 +730,13 @@ void AddCalibrationBranches(Int_t minFileNumber, Int_t maxFileNumber){
 
         TFile *fwrite = TFile::Open(writeFileName, "NEW");
         TTree *tr = tree->CloneTree();
+        
         //tree->Print();
         //gDirectory->pwd();
         //fwrite->ls();
         //tree->Write("",TObject::kOverwrite);
         //fwrite->Write("", TObject::kOverwrite);
+        
         tr->Write();
         
         //tree->Print();
@@ -337,33 +757,60 @@ void AddCalibrationBranches(Int_t minFileNumber, Int_t maxFileNumber){
 
 void PlotBackground(){
     
-    ifstream bgFile;
+    ifstream bgFile, bgFileWith;
     bgFile.open("/home/andreas/vip2/reports/Analysis/backgroundNoCurrent.txt");
+    bgFileWith.open("/home/andreas/vip2/reports/Analysis/backgroundWithCurrent.txt");
     
     Int_t sddN;
-    //Int_t splits = 81;
+    Int_t splitsWith = 81;
     Int_t splits = 116;
+    
     Double_t utList[splits];
     Double_t fileNList[splits];
-    Double_t sourceR1[splits], backgR1[splits], highER1[splits], rejR1[splits];
-    Double_t sourceR2[splits], backgR2[splits], highER2[splits], rejR2[splits];
-    Double_t sourceR3[splits], backgR3[splits], highER3[splits], rejR3[splits];
-    Double_t sourceR4[splits], backgR4[splits], highER4[splits], rejR4[splits];
-    Double_t sourceR5[splits], backgR5[splits], highER5[splits], rejR5[splits];
-    Double_t sourceR6[splits], backgR6[splits], highER6[splits], rejR6[splits];
+    Double_t sourceR1[splits], backgR1[splits], highER1[splits], rejR1[splits], cuR1[splits];
+    Double_t sourceR2[splits], backgR2[splits], highER2[splits], rejR2[splits], cuR2[splits];
+    Double_t sourceR3[splits], backgR3[splits], highER3[splits], rejR3[splits], cuR3[splits];
+    Double_t sourceR4[splits], backgR4[splits], highER4[splits], rejR4[splits], cuR4[splits];
+    Double_t sourceR5[splits], backgR5[splits], highER5[splits], rejR5[splits], cuR5[splits];
+    Double_t sourceR6[splits], backgR6[splits], highER6[splits], rejR6[splits], cuR6[splits];
+    
+    Double_t utListWith[splitsWith];
+    Double_t fileNListWith[splitsWith];
+    Double_t sourceR1With[splitsWith], backgR1With[splitsWith], highER1With[splitsWith], rejR1With[splitsWith], cuR1With[splitsWith];
+    Double_t sourceR2With[splitsWith], backgR2With[splitsWith], highER2With[splitsWith], rejR2With[splitsWith], cuR2With[splitsWith];
+    Double_t sourceR3With[splitsWith], backgR3With[splitsWith], highER3With[splitsWith], rejR3With[splitsWith], cuR3With[splitsWith];
+    Double_t sourceR4With[splitsWith], backgR4With[splitsWith], highER4With[splitsWith], rejR4With[splitsWith], cuR4With[splitsWith];
+    Double_t sourceR5With[splitsWith], backgR5With[splitsWith], highER5With[splitsWith], rejR5With[splitsWith], cuR5With[splitsWith];
+    Double_t sourceR6With[splitsWith], backgR6With[splitsWith], highER6With[splitsWith], rejR6With[splitsWith], cuR6With[splitsWith];
     
     for( Int_t fileN = 1; fileN <= splits; fileN++ ){
         
-        bgFile >> sddN >> utList[fileN-1] >> sourceR1[fileN-1] >> backgR1[fileN-1] >> highER1[fileN-1] >> rejR1[fileN-1];
-        bgFile >> sddN >> utList[fileN-1] >> sourceR2[fileN-1] >> backgR2[fileN-1] >> highER2[fileN-1] >> rejR2[fileN-1];
-        bgFile >> sddN >> utList[fileN-1] >> sourceR3[fileN-1] >> backgR3[fileN-1] >> highER3[fileN-1] >> rejR3[fileN-1];
-        bgFile >> sddN >> utList[fileN-1] >> sourceR4[fileN-1] >> backgR4[fileN-1] >> highER4[fileN-1] >> rejR4[fileN-1];
-        bgFile >> sddN >> utList[fileN-1] >> sourceR5[fileN-1] >> backgR5[fileN-1] >> highER5[fileN-1] >> rejR5[fileN-1];
-        bgFile >> sddN >> utList[fileN-1] >> sourceR6[fileN-1] >> backgR6[fileN-1] >> highER6[fileN-1] >> rejR6[fileN-1];
+        bgFile >> sddN >> utList[fileN-1] >> sourceR1[fileN-1] >> backgR1[fileN-1] >> highER1[fileN-1] >> cuR1[fileN-1] >> rejR1[fileN-1];
+        bgFile >> sddN >> utList[fileN-1] >> sourceR2[fileN-1] >> backgR2[fileN-1] >> highER2[fileN-1] >> cuR2[fileN-1] >> rejR2[fileN-1];
+        bgFile >> sddN >> utList[fileN-1] >> sourceR3[fileN-1] >> backgR3[fileN-1] >> highER3[fileN-1] >> cuR3[fileN-1] >> rejR3[fileN-1];
+        bgFile >> sddN >> utList[fileN-1] >> sourceR4[fileN-1] >> backgR4[fileN-1] >> highER4[fileN-1] >> cuR4[fileN-1] >> rejR4[fileN-1];
+        bgFile >> sddN >> utList[fileN-1] >> sourceR5[fileN-1] >> backgR5[fileN-1] >> highER5[fileN-1] >> cuR5[fileN-1] >> rejR5[fileN-1];
+        bgFile >> sddN >> utList[fileN-1] >> sourceR6[fileN-1] >> backgR6[fileN-1] >> highER6[fileN-1] >> cuR6[fileN-1] >> rejR6[fileN-1];
         
-        fileNList[fileN-1] = fileN;
+        //fileNList[fileN-1] = fileN;
         
 //        cout << backgR1[fileN-1] << " " << utList[fileN-1] << endl;
+        
+        
+    }
+    
+    for( Int_t fileN = 1; fileN <= splitsWith; fileN++ ){
+        
+        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR1With[fileN-1] >> backgR1With[fileN-1] >> highER1With[fileN-1] >> cuR1With[fileN-1] >> rejR1With[fileN-1];
+        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR2With[fileN-1] >> backgR2With[fileN-1] >> highER2With[fileN-1] >> cuR2With[fileN-1] >> rejR2With[fileN-1];
+        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR3With[fileN-1] >> backgR3With[fileN-1] >> highER3With[fileN-1] >> cuR3With[fileN-1] >> rejR3With[fileN-1];
+        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR4With[fileN-1] >> backgR4With[fileN-1] >> highER4With[fileN-1] >> cuR4With[fileN-1] >> rejR4With[fileN-1];
+        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR5With[fileN-1] >> backgR5With[fileN-1] >> highER5With[fileN-1] >> cuR5With[fileN-1] >> rejR5With[fileN-1];
+        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR6With[fileN-1] >> backgR6With[fileN-1] >> highER6With[fileN-1] >> cuR6With[fileN-1] >> rejR6With[fileN-1];
+        
+        //fileNList[fileN-1] = fileN;
+        
+        cout << backgR1With[fileN-1] << " " << utListWith[fileN-1] << endl;
         
         
     }
@@ -371,18 +818,29 @@ void PlotBackground(){
     bgFile.close();
     
     
-    TCanvas *c1 = new TCanvas("c1", "c1", 800, 600);
+    TCanvas *c1 = new TCanvas("SDD1", "SDD1", 800, 600);
     c1->Divide(2,2);
     
     c1->cd(1);
     TGraph *grb1 = new TGraph(splits,utList,backgR1);
     grb1->SetMarkerStyle(20);
+    grb1->GetYaxis()->SetRangeUser(0.0075,0.02);
     grb1->Draw();
     
+    TGraph *grb1With = new TGraph(splitsWith,utListWith,backgR1With);
+    grb1With->SetMarkerStyle(20);
+    grb1With->SetMarkerColor(4);
+    grb1With->Draw("same");
+    
+//    c1->cd(2);
+//    TGraph *grr1 = new TGraph(splits,utList,rejR1);
+//    grr1->SetMarkerStyle(20);
+//    grr1->Draw();
+    
     c1->cd(2);
-    TGraph *grr1 = new TGraph(splits,utList,rejR1);
-    grr1->SetMarkerStyle(20);
-    grr1->Draw();
+    TGraph *grcu1 = new TGraph(splits,utList,cuR1);
+    grcu1->SetMarkerStyle(20);
+    grcu1->Draw();
     
     c1->cd(3);
     TGraph *grs1 = new TGraph(splits,utList,sourceR1);
@@ -397,128 +855,153 @@ void PlotBackground(){
     
     // SDD 2 ------------------------------------------
     
-    TCanvas *c2 = new TCanvas("c2", "c2", 800, 600);
-    c2->Divide(2,2);
-    
-    c2->cd(1);
-    TGraph *grb2 = new TGraph(splits,utList,backgR2);
-    grb2->SetMarkerStyle(20);
-    grb2->Draw();
-    
-    c2->cd(2);
-    TGraph *grr2 = new TGraph(splits,utList,rejR2);
-    grr2->SetMarkerStyle(20);
-    grr2->Draw();
-    
-    c2->cd(3);
-    TGraph *grs2 = new TGraph(splits,utList,sourceR2);
-    grs2->SetMarkerStyle(20);
-    grs2->Draw();
-    
-    c2->cd(4);
-    TGraph *grhe2 = new TGraph(splits,utList,highER2);
-    grhe2->SetMarkerStyle(20);
-    grhe2->Draw();
-    
-    // SDD 3 ------------------------------------------
-    
-    TCanvas *c3 = new TCanvas("c3", "c3", 800, 600);
-    c3->Divide(2,2);
-    
-    c3->cd(1);
-    TGraph *grb3 = new TGraph(splits,utList,backgR3);
-    grb3->SetMarkerStyle(20);
-    grb3->Draw();
-    
-    c3->cd(2);
-    TGraph *grr3 = new TGraph(splits,utList,rejR3);
-    grr3->SetMarkerStyle(20);
-    grr3->Draw();
-    
-    c3->cd(3);
-    TGraph *grs3 = new TGraph(splits,utList,sourceR3);
-    grs3->SetMarkerStyle(20);
-    grs3->Draw();
-    
-    c3->cd(4);
-    TGraph *grhe3 = new TGraph(splits,utList,highER3);
-    grhe3->SetMarkerStyle(20);
-    grhe3->Draw();
-    
-    // SDD 4 ------------------------------------------
-    
-    TCanvas *c4 = new TCanvas("c4", "c4", 800, 600);
-    c4->Divide(2,2);
-    
-    c4->cd(1);
-    TGraph *grb4 = new TGraph(splits,utList,backgR4);
-    grb4->SetMarkerStyle(20);
-    grb4->Draw();
-    
-    c4->cd(2);
-    TGraph *grr4 = new TGraph(splits,utList,rejR4);
-    grr4->SetMarkerStyle(20);
-    grr4->Draw();
-    
-    c4->cd(3);
-    TGraph *grs4 = new TGraph(splits,utList,sourceR4);
-    grs4->SetMarkerStyle(20);
-    grs4->Draw();
-    
-    c4->cd(4);
-    TGraph *grhe4 = new TGraph(splits,utList,highER4);
-    grhe4->SetMarkerStyle(20);
-    grhe4->Draw();
-    
-    // SDD 5 ------------------------------------------
-    
-    TCanvas *c5 = new TCanvas("c5", "c5", 800, 600);
-    c5->Divide(2,2);
-    
-    c5->cd(1);
-    TGraph *grb5 = new TGraph(splits,utList,backgR5);
-    grb5->SetMarkerStyle(20);
-    grb5->Draw();
-    
-    c5->cd(2);
-    TGraph *grr5 = new TGraph(splits,utList,rejR5);
-    grr5->SetMarkerStyle(20);
-    grr5->Draw();
-    
-    c5->cd(3);
-    TGraph *grs5 = new TGraph(splits,utList,sourceR5);
-    grs5->SetMarkerStyle(20);
-    grs5->Draw();
-    
-    c5->cd(4);
-    TGraph *grhe5 = new TGraph(splits,utList,highER5);
-    grhe5->SetMarkerStyle(20);
-    grhe5->Draw();
-    
-    // SDD 6 ------------------------------------------
-    
-    TCanvas *c6 = new TCanvas("c6", "c6", 800, 600);
-    c6->Divide(2,2);
-    
-    c6->cd(1);
-    TGraph *grb6 = new TGraph(splits,utList,backgR6);
-    grb6->SetMarkerStyle(20);
-    grb6->Draw();
-    
-    c6->cd(2);
-    TGraph *grr6 = new TGraph(splits,utList,rejR6);
-    grr6->SetMarkerStyle(20);
-    grr6->Draw();
-    
-    c6->cd(3);
-    TGraph *grs6 = new TGraph(splits,utList,sourceR6);
-    grs6->SetMarkerStyle(20);
-    grs6->Draw();
-    
-    c6->cd(4);
-    TGraph *grhe6 = new TGraph(splits,utList,highER6);
-    grhe6->SetMarkerStyle(20);
-    grhe6->Draw();
+//    TCanvas *c2 = new TCanvas("c2", "c2", 800, 600);
+//    c2->Divide(2,2);
+//    
+//    c2->cd(1);
+//    TGraph *grb2 = new TGraph(splits,utList,backgR2);
+//    grb2->SetMarkerStyle(20);
+//    grb2->Draw();
+//    
+////    c2->cd(2);
+////    TGraph *grr2 = new TGraph(splits,utList,rejR2);
+////    grr2->SetMarkerStyle(20);
+////    grr2->Draw();
+//    
+//    c2->cd(2);
+//    TGraph *grcu2 = new TGraph(splits,utList,cuR2);
+//    grcu2->SetMarkerStyle(20);
+//    grcu2->Draw();
+//    
+//    c2->cd(3);
+//    TGraph *grs2 = new TGraph(splits,utList,sourceR2);
+//    grs2->SetMarkerStyle(20);
+//    grs2->Draw();
+//    
+//    c2->cd(4);
+//    TGraph *grhe2 = new TGraph(splits,utList,highER2);
+//    grhe2->SetMarkerStyle(20);
+//    grhe2->Draw();
+//    
+//    // SDD 3 ------------------------------------------
+//    
+//    TCanvas *c3 = new TCanvas("c3", "c3", 800, 600);
+//    c3->Divide(2,2);
+//    
+//    c3->cd(1);
+//    TGraph *grb3 = new TGraph(splits,utList,backgR3);
+//    grb3->SetMarkerStyle(20);
+//    grb3->Draw();
+//    
+////    c3->cd(2);
+////    TGraph *grr3 = new TGraph(splits,utList,rejR3);
+////    grr3->SetMarkerStyle(20);
+////    grr3->Draw();
+//    
+//    c3->cd(2);
+//    TGraph *grcu3 = new TGraph(splits,utList,cuR3);
+//    grcu3->SetMarkerStyle(20);
+//    grcu3->Draw();
+//    
+//    c3->cd(3);
+//    TGraph *grs3 = new TGraph(splits,utList,sourceR3);
+//    grs3->SetMarkerStyle(20);
+//    grs3->Draw();
+//    
+//    c3->cd(4);
+//    TGraph *grhe3 = new TGraph(splits,utList,highER3);
+//    grhe3->SetMarkerStyle(20);
+//    grhe3->Draw();
+//    
+//    // SDD 4 ------------------------------------------
+//    
+//    TCanvas *c4 = new TCanvas("c4", "c4", 800, 600);
+//    c4->Divide(2,2);
+//    
+//    c4->cd(1);
+//    TGraph *grb4 = new TGraph(splits,utList,backgR4);
+//    grb4->SetMarkerStyle(20);
+//    grb4->Draw();
+//    
+////    c4->cd(2);
+////    TGraph *grr4 = new TGraph(splits,utList,rejR4);
+////    grr4->SetMarkerStyle(20);
+////    grr4->Draw();
+//    
+//    c4->cd(2);
+//    TGraph *grcu4 = new TGraph(splits,utList,cuR4);
+//    grcu4->SetMarkerStyle(20);
+//    grcu4->Draw();
+//    
+//    c4->cd(3);
+//    TGraph *grs4 = new TGraph(splits,utList,sourceR4);
+//    grs4->SetMarkerStyle(20);
+//    grs4->Draw();
+//    
+//    c4->cd(4);
+//    TGraph *grhe4 = new TGraph(splits,utList,highER4);
+//    grhe4->SetMarkerStyle(20);
+//    grhe4->Draw();
+//    
+//    // SDD 5 ------------------------------------------
+//    
+//    TCanvas *c5 = new TCanvas("c5", "c5", 800, 600);
+//    c5->Divide(2,2);
+//    
+//    c5->cd(1);
+//    TGraph *grb5 = new TGraph(splits,utList,backgR5);
+//    grb5->SetMarkerStyle(20);
+//    grb5->Draw();
+//    
+////    c5->cd(2);
+////    TGraph *grr5 = new TGraph(splits,utList,rejR5);
+////    grr5->SetMarkerStyle(20);
+////    grr5->Draw();
+//    
+//    c5->cd(2);
+//    TGraph *grcu5 = new TGraph(splits,utList,cuR5);
+//    grcu5->SetMarkerStyle(20);
+//    grcu5->Draw();
+//    
+//    c5->cd(3);
+//    TGraph *grs5 = new TGraph(splits,utList,sourceR5);
+//    grs5->SetMarkerStyle(20);
+//    grs5->Draw();
+//    
+//    c5->cd(4);
+//    TGraph *grhe5 = new TGraph(splits,utList,highER5);
+//    grhe5->SetMarkerStyle(20);
+//    grhe5->Draw();
+//    
+//    // SDD 6 ------------------------------------------
+//    
+//    TCanvas *c6 = new TCanvas("c6", "c6", 800, 600);
+//    c6->Divide(2,2);
+//    
+//    c6->cd(1);
+//    TGraph *grb6 = new TGraph(splits,utList,backgR6);
+//    grb6->SetMarkerStyle(20);
+//    grb6->Draw();
+//    
+////    c6->cd(2);
+////    TGraph *grr6 = new TGraph(splits,utList,rejR6);
+////    grr6->SetMarkerStyle(20);
+////    grr6->Draw();
+//    
+//    c6->cd(2);
+//    TGraph *grcu6 = new TGraph(splits,utList,cuR6);
+//    grcu6->SetMarkerStyle(20);
+//    grcu6->Draw();
+//    
+//    c6->cd(3);
+//    TGraph *grs6 = new TGraph(splits,utList,sourceR6);
+//    grs6->SetMarkerStyle(20);
+//    grs6->Draw();
+//    
+//    c6->cd(4);
+//    TGraph *grhe6 = new TGraph(splits,utList,highER6);
+//    grhe6->SetMarkerStyle(20);
+//    grhe6->Draw();
     
     
     
@@ -658,6 +1141,11 @@ void CheckBackground( TString rootfile,  TString place, Int_t divider, Int_t par
     Int_t counter_he[6] = {0};
     Double_t rate_he[6] = {0};
     
+    Int_t lbound_cu = 7000;
+    Int_t ubound_cu = 10000;
+    Int_t counter_cu[6] = {0};
+    Double_t rate_cu[6] = {0};
+    
     EventStruct  evt_r;
 
     Int_t size = place.Sizeof();
@@ -718,6 +1206,8 @@ void CheckBackground( TString rootfile,  TString place, Int_t divider, Int_t par
   
     }
     
+    cout << " lower event index: " << lbound_ind << " upper event index:  " << ubound_ind << endl;
+    
     for(Int_t i = lbound_ind; i <= ubound_ind; i++){
         
         adcEvent->GetEntry(i);
@@ -741,12 +1231,13 @@ void CheckBackground( TString rootfile,  TString place, Int_t divider, Int_t par
             if( energyList[adc_channel] > lbound_source &&  energyList[adc_channel] < ubound_source){ counter_source[sdd-1] += 1; }
             if( energyList[adc_channel] > lbound_bg &&  energyList[adc_channel] < ubound_bg)        { counter_bg[sdd-1] += 1;     }
             if( energyList[adc_channel] > lbound_he &&  energyList[adc_channel] < ubound_he)        { counter_he[sdd-1] += 1;     }
+            if( energyList[adc_channel] > lbound_cu &&  energyList[adc_channel] < ubound_cu)        { counter_cu[sdd-1] += 1;     }
         
         }
         
     }
     
-    cout << coinc_counter << " " << sddEventCount << endl;
+    cout << "coinc counter: " << coinc_counter << " sdd Event count: " << sddEventCount << endl;
     coinc_frac = (float)coinc_counter / (float)(sddEventCount);
     
     
@@ -798,16 +1289,17 @@ void CheckBackground( TString rootfile,  TString place, Int_t divider, Int_t par
 //    
 //    }
     
-    cout << sec_duration << endl;
+    cout << " duration of this part in seconds: " << sec_duration << endl;
     for( Int_t sdd = 1; sdd <= 6; sdd++ ){
         
         rate_source[sdd-1] = (float)counter_source[sdd-1] / (float)sec_duration;
         rate_bg[sdd-1] = (float)counter_bg[sdd-1] / (float)sec_duration;
         rate_he[sdd-1] = (float)counter_he[sdd-1] / (float)sec_duration;
+        rate_cu[sdd-1] = (float)counter_cu[sdd-1] / (float)sec_duration;
         
         
         
-        logfile << sdd << " " << evt_r.ut << " " << rate_source[sdd-1] << " " << rate_bg[sdd-1] << " " << rate_he[sdd-1] << " " << coinc_frac << endl;
+        logfile << sdd << " " << evt_r.ut << " " << rate_source[sdd-1] << " " << rate_bg[sdd-1] << " " << rate_he[sdd-1] << " " << rate_cu[sdd-1] << " " << coinc_frac << endl;
         
         
     }
@@ -1649,32 +2141,46 @@ void GetRateParts(TString rootfile, Int_t divider, TString place){
   }
 
 }
-/*
-void MakeROIPlots(TString rootfile, TString place, Int_t sdd){
 
-  TH1F *hist;
-  hist=FillScaledHistogram(rootfile,place,sdd); // 20 eV binning originally
+void MakeROIPlots(TString withName, TString noName){
 
-  hist->Rebin(3);
-  hist->GetXaxis()->SetRangeUser(7000,10000);
-  hist->GetYaxis()->SetTitle("Counts/60 eV");
-  hist->GetXaxis()->SetTitle("Energy in eV");
-  hist->GetYaxis()->SetTitleOffset(1.4);
-  hist->SetTitle(Form("SDD %d energy spectrum",sdd));
+  TFile *f = new TFile("/home/andreas/vip2/data/root/LNGS/1-618files-final/energyHistograms.root");
+  
+  TH1F *withH =  (TH1F*)f->Get(withName);
+  TH1F *noH   =  (TH1F*)f->Get(noName);
+  
+  noH->Rebin(25);
+  noH->GetXaxis()->SetRangeUser(7300,8400);
+  noH->GetYaxis()->SetTitle("Counts/25 eV");
+  noH->GetXaxis()->SetTitle("Energy in eV");
+  noH->GetYaxis()->SetRangeUser(0,3100);
+  noH->GetYaxis()->SetTitleOffset(1.4);
+  noH->SetLineColor(2);
+  noH->SetLineWidth(2);
+  
+
+  withH->Rebin(25);
+  withH->GetXaxis()->SetRangeUser(7300,8400);
+  withH->SetLineWidth(2);
+  //withH->GetYaxis()->SetTitle("Counts/25 eV");
+  //withH->GetXaxis()->SetTitle("Energy in eV");
+ 
+  
   gStyle->SetOptStat(0);
   
   TCanvas *c1 = new TCanvas("c1", "c1", 800, 600);
   c1->cd();
   
 
-  hist->Draw();
+  noH->Draw();
+  withH->Draw("same");
   
   //c1->Print(Form("/home/andreas/vip2/reports/1608_VIPReportLNF/sdd%d-60eVbin-7-10.png",sdd));
 
-  c1->Close();
+  //c1->Close();
 
 
-}*/
+}
 
 TH1F* FillSummedEnergyHisto(TString rootfile, TString place, Int_t low_edge_ev, Int_t ch_number){
 
@@ -1781,3 +2287,22 @@ void MakeStabilityPlots(){
   gfwhmerr->Draw("ap");
 }
 
+
+void checkHistograms(){
+    
+    TFile *f = new TFile("/home/andreas/vip2/data/root/LNGS/1-618files-final/energyHistograms.root");
+    
+    TH1F *no1 = (TH1F*)f->Get("noCurrentSmallsdd1");
+    TH1F *no2 = (TH1F*)f->Get("noCurrentSmallsdd2");
+    TH1F *no3 = (TH1F*)f->Get("noCurrentSmallsdd3");
+    TH1F *no4 = (TH1F*)f->Get("noCurrentSmallsdd4");
+    TH1F *no5 = (TH1F*)f->Get("noCurrentSmallsdd5");
+    TH1F *no6 = (TH1F*)f->Get("noCurrentSmallsdd6");
+    
+    TH1F *noSum = (TH1F*)f->Get("noCurrentSmallSum");
+    
+    no1->Draw();
+    
+    //f->Close();
+    
+}

@@ -25,6 +25,15 @@
 
 using namespace std;
 
+Double_t gaussFunc(Double_t *x, Double_t *par){
+    
+    Double_t xx = x[0];
+    Double_t gauss = par[0]/(sqrt(2*TMath::Pi())*par[2])*TMath::Exp(-((xx-par[1])*(xx-par[1]))/(2*par[2]*par[2]));
+    
+    return gauss;
+    
+}
+
 Double_t RoiCuFunc(Double_t *x, Double_t *par){
     
     // fit of the region of roi, nickel, and cu ka kb
