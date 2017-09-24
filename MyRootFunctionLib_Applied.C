@@ -810,7 +810,7 @@ void PlotBackground(){
         
         //fileNList[fileN-1] = fileN;
         
-        cout << backgR1With[fileN-1] << " " << utListWith[fileN-1] << endl;
+        cout << backgR4With[fileN-1] << " " << utListWith[fileN-1] << endl;
         
         
     }
@@ -823,185 +823,377 @@ void PlotBackground(){
     
     c1->cd(1);
     TGraph *grb1 = new TGraph(splits,utList,backgR1);
+    grb1->SetTitle("Background 7 - 30 keV");
     grb1->SetMarkerStyle(20);
+    grb1->GetXaxis()->SetLimits(1446000000,1504000000);
     grb1->GetYaxis()->SetRangeUser(0.0075,0.02);
     grb1->Draw();
+
     
     TGraph *grb1With = new TGraph(splitsWith,utListWith,backgR1With);
     grb1With->SetMarkerStyle(20);
     grb1With->SetMarkerColor(4);
-    grb1With->Draw("same");
-    
+    grb1With->Draw("PL");
+
 //    c1->cd(2);
 //    TGraph *grr1 = new TGraph(splits,utList,rejR1);
 //    grr1->SetMarkerStyle(20);
 //    grr1->Draw();
     
     c1->cd(2);
+
     TGraph *grcu1 = new TGraph(splits,utList,cuR1);
+    grcu1->SetTitle("Background 7 - 10 keV");
     grcu1->SetMarkerStyle(20);
+    grcu1->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grcu1->GetYaxis()->SetRangeUser(0.0075,0.02);
     grcu1->Draw();
+
+    TGraph *grcu1With = new TGraph(splitsWith,utListWith,cuR1With);
+    grcu1With->SetMarkerStyle(20);
+    grcu1With->SetMarkerColor(4);
+    grcu1With->Draw("PL");
     
     c1->cd(3);
     TGraph *grs1 = new TGraph(splits,utList,sourceR1);
+    grs1->SetTitle("Counts from Fe-55 source");
+    grs1->GetXaxis()->SetLimits(1446000000,1504000000);
     grs1->SetMarkerStyle(20);
     grs1->Draw();
+
+    TGraph *grs1With = new TGraph(splitsWith,utListWith,sourceR1With);
+    grs1With->SetMarkerStyle(20);
+    grs1With->SetMarkerColor(4);
+    grs1With->Draw("PL");
     
     c1->cd(4);
     TGraph *grhe1 = new TGraph(splits,utList,highER1);
+    grhe1->SetTitle("Counts with energy > 30 keV");
+    grhe1->GetXaxis()->SetLimits(1446000000,1504000000);
+    grhe1->GetYaxis()->SetRangeUser(0.01,0.026);
     grhe1->SetMarkerStyle(20);
     grhe1->Draw();
+
+    TGraph *grhe1With = new TGraph(splitsWith,utListWith,highER1With);
+    grhe1With->SetMarkerStyle(20);
+    grhe1With->SetMarkerColor(4);
+    grhe1With->Draw("PL");
     
     
     // SDD 2 ------------------------------------------
     
-//    TCanvas *c2 = new TCanvas("c2", "c2", 800, 600);
-//    c2->Divide(2,2);
-//    
-//    c2->cd(1);
-//    TGraph *grb2 = new TGraph(splits,utList,backgR2);
-//    grb2->SetMarkerStyle(20);
-//    grb2->Draw();
-//    
-////    c2->cd(2);
-////    TGraph *grr2 = new TGraph(splits,utList,rejR2);
-////    grr2->SetMarkerStyle(20);
-////    grr2->Draw();
-//    
+    TCanvas *c2 = new TCanvas("SDD2", "SDD2", 800, 600);
+    c2->Divide(2,2);
+    
+    c2->cd(1);
+    TGraph *grb2 = new TGraph(splits,utList,backgR2);
+    grb2->SetTitle("Background 7 - 30 keV");
+    grb2->SetMarkerStyle(20);
+    grb2->GetXaxis()->SetLimits(1446000000,1504000000);
+    grb2->GetYaxis()->SetRangeUser(0.0075,0.02);
+    grb2->Draw();
+
+    
+    TGraph *grb2With = new TGraph(splitsWith,utListWith,backgR2With);
+    grb2With->SetMarkerStyle(20);
+    grb2With->SetMarkerColor(4);
+    grb2With->Draw("PL");
+
 //    c2->cd(2);
-//    TGraph *grcu2 = new TGraph(splits,utList,cuR2);
-//    grcu2->SetMarkerStyle(20);
-//    grcu2->Draw();
-//    
-//    c2->cd(3);
-//    TGraph *grs2 = new TGraph(splits,utList,sourceR2);
-//    grs2->SetMarkerStyle(20);
-//    grs2->Draw();
-//    
-//    c2->cd(4);
-//    TGraph *grhe2 = new TGraph(splits,utList,highER2);
-//    grhe2->SetMarkerStyle(20);
-//    grhe2->Draw();
+//    TGraph *grr2 = new TGraph(splits,utList,rejR2);
+//    grr2->SetMarkerStyle(20);
+//    grr2->Draw();
+    
+    c2->cd(2);
+
+    TGraph *grcu2 = new TGraph(splits,utList,cuR2);
+    grcu2->SetTitle("Background 7 - 10 keV");
+    grcu2->SetMarkerStyle(20);
+    grcu2->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grcu2->GetYaxis()->SetRangeUser(0.0075,0.02);
+    grcu2->Draw();
+
+    TGraph *grcu2With = new TGraph(splitsWith,utListWith,cuR2With);
+    grcu2With->SetMarkerStyle(20);
+    grcu2With->SetMarkerColor(4);
+    grcu2With->Draw("PL");
+    
+    c2->cd(3);
+    TGraph *grs2 = new TGraph(splits,utList,sourceR2);
+    grs2->SetTitle("Counts from Fe-55 source");
+    grs2->GetXaxis()->SetLimits(1446000000,1504000000);
+    grs2->SetMarkerStyle(20);
+    grs2->Draw();
+
+    TGraph *grs2With = new TGraph(splitsWith,utListWith,sourceR2With);
+    grs2With->SetMarkerStyle(20);
+    grs2With->SetMarkerColor(4);
+    grs2With->Draw("PL");
+    
+    c2->cd(4);
+    TGraph *grhe2 = new TGraph(splits,utList,highER2);
+    grhe2->SetTitle("Counts with energy > 30 keV");
+    grhe2->GetXaxis()->SetLimits(1446000000,1504000000);
+    grhe2->GetYaxis()->SetRangeUser(0.01,0.026);
+    grhe2->SetMarkerStyle(20);
+    grhe2->Draw();
+
+    TGraph *grhe2With = new TGraph(splitsWith,utListWith,highER2With);
+    grhe2With->SetMarkerStyle(20);
+    grhe2With->SetMarkerColor(4);
+    grhe2With->Draw("PL");
 //    
 //    // SDD 3 ------------------------------------------
 //    
-//    TCanvas *c3 = new TCanvas("c3", "c3", 800, 600);
-//    c3->Divide(2,2);
-//    
-//    c3->cd(1);
-//    TGraph *grb3 = new TGraph(splits,utList,backgR3);
-//    grb3->SetMarkerStyle(20);
-//    grb3->Draw();
-//    
-////    c3->cd(2);
-////    TGraph *grr3 = new TGraph(splits,utList,rejR3);
-////    grr3->SetMarkerStyle(20);
-////    grr3->Draw();
-//    
+    TCanvas *c3 = new TCanvas("SDD3", "SDD3", 800, 600);
+    c3->Divide(2,2);
+    
+    c3->cd(1);
+    TGraph *grb3 = new TGraph(splits,utList,backgR3);
+    grb3->SetTitle("Background 7 - 30 keV");
+    grb3->SetMarkerStyle(20);
+    grb3->GetXaxis()->SetLimits(1446000000,1504000000);
+    grb3->GetYaxis()->SetRangeUser(0.0075,0.02);
+    grb3->Draw();
+
+    
+    TGraph *grb3With = new TGraph(splitsWith,utListWith,backgR3With);
+    grb3With->SetMarkerStyle(20);
+    grb3With->SetMarkerColor(4);
+    grb3With->Draw("PL");
+
 //    c3->cd(2);
-//    TGraph *grcu3 = new TGraph(splits,utList,cuR3);
-//    grcu3->SetMarkerStyle(20);
-//    grcu3->Draw();
-//    
-//    c3->cd(3);
-//    TGraph *grs3 = new TGraph(splits,utList,sourceR3);
-//    grs3->SetMarkerStyle(20);
-//    grs3->Draw();
-//    
-//    c3->cd(4);
-//    TGraph *grhe3 = new TGraph(splits,utList,highER3);
-//    grhe3->SetMarkerStyle(20);
-//    grhe3->Draw();
+//    TGraph *grr3 = new TGraph(splits,utList,rejR3);
+//    grr3->SetMarkerStyle(20);
+//    grr3->Draw();
+    
+    c3->cd(2);
+
+    TGraph *grcu3 = new TGraph(splits,utList,cuR3);
+    grcu3->SetTitle("Background 7 - 10 keV");
+    grcu3->SetMarkerStyle(20);
+    grcu3->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grcu3->GetYaxis()->SetRangeUser(0.0075,0.02);
+    grcu3->Draw();
+
+    TGraph *grcu3With = new TGraph(splitsWith,utListWith,cuR3With);
+    grcu3With->SetMarkerStyle(20);
+    grcu3With->SetMarkerColor(4);
+    grcu3With->Draw("PL");
+    
+    c3->cd(3);
+    TGraph *grs3 = new TGraph(splits,utList,sourceR3);
+    grs3->SetTitle("Counts from Fe-55 source");
+    grs3->GetXaxis()->SetLimits(1446000000,1504000000);
+    grs3->SetMarkerStyle(20);
+    grs3->Draw();
+
+    TGraph *grs3With = new TGraph(splitsWith,utListWith,sourceR3With);
+    grs3With->SetMarkerStyle(20);
+    grs3With->SetMarkerColor(4);
+    grs3With->Draw("PL");
+    
+    c3->cd(4);
+    TGraph *grhe3 = new TGraph(splits,utList,highER3);
+    grhe3->SetTitle("Counts with energy > 30 keV");
+    grhe3->GetXaxis()->SetLimits(1446000000,1504000000);
+    grhe3->GetYaxis()->SetRangeUser(0.01,0.026);
+    grhe3->SetMarkerStyle(20);
+    grhe3->Draw();
+
+    TGraph *grhe3With = new TGraph(splitsWith,utListWith,highER3With);
+    grhe3With->SetMarkerStyle(20);
+    grhe3With->SetMarkerColor(4);
+    grhe3With->Draw("PL");
 //    
 //    // SDD 4 ------------------------------------------
 //    
-//    TCanvas *c4 = new TCanvas("c4", "c4", 800, 600);
-//    c4->Divide(2,2);
-//    
-//    c4->cd(1);
-//    TGraph *grb4 = new TGraph(splits,utList,backgR4);
-//    grb4->SetMarkerStyle(20);
-//    grb4->Draw();
-//    
-////    c4->cd(2);
-////    TGraph *grr4 = new TGraph(splits,utList,rejR4);
-////    grr4->SetMarkerStyle(20);
-////    grr4->Draw();
-//    
+    TCanvas *c4 = new TCanvas("SDD4", "SDD4", 800, 600);
+    c4->Divide(2,2);
+    
+    c4->cd(1);
+    TGraph *grb4 = new TGraph(splits,utList,backgR4);
+    grb4->SetTitle("Background 7 - 30 keV");
+    grb4->SetMarkerStyle(20);
+    grb4->GetXaxis()->SetLimits(1446000000,1504000000);
+    grb4->GetYaxis()->SetRangeUser(0.005,0.0075);
+    grb4->Draw();
+
+    
+    TGraph *grb4With = new TGraph(splitsWith,utListWith,backgR4With);
+    grb4With->SetMarkerStyle(20);
+    grb4With->SetMarkerColor(4);
+    grb4With->Draw("PL");
+
 //    c4->cd(2);
-//    TGraph *grcu4 = new TGraph(splits,utList,cuR4);
-//    grcu4->SetMarkerStyle(20);
-//    grcu4->Draw();
-//    
-//    c4->cd(3);
-//    TGraph *grs4 = new TGraph(splits,utList,sourceR4);
-//    grs4->SetMarkerStyle(20);
-//    grs4->Draw();
-//    
-//    c4->cd(4);
-//    TGraph *grhe4 = new TGraph(splits,utList,highER4);
-//    grhe4->SetMarkerStyle(20);
-//    grhe4->Draw();
+//    TGraph *grr4 = new TGraph(splits,utList,rejR4);
+//    grr4->SetMarkerStyle(20);
+//    grr4->Draw();
+    
+    c4->cd(2);
+
+    TGraph *grcu4 = new TGraph(splits,utList,cuR4);
+    grcu4->SetTitle("Background 7 - 10 keV");
+    grcu4->SetMarkerStyle(20);
+    grcu4->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grcu4->GetYaxis()->SetRangeUser(0.0075,0.02);
+    grcu4->Draw();
+
+    TGraph *grcu4With = new TGraph(splitsWith,utListWith,cuR4With);
+    grcu4With->SetMarkerStyle(20);
+    grcu4With->SetMarkerColor(4);
+    grcu4With->Draw("PL");
+    
+    c4->cd(3);
+    TGraph *grs4 = new TGraph(splits,utList,sourceR4);
+    grs4->SetTitle("Counts from Fe-55 source");
+    grs4->GetXaxis()->SetLimits(1446000000,1504000000);
+    grs4->SetMarkerStyle(20);
+    grs4->Draw();
+
+    TGraph *grs4With = new TGraph(splitsWith,utListWith,sourceR4With);
+    grs4With->SetMarkerStyle(20);
+    grs4With->SetMarkerColor(4);
+    grs4With->Draw("PL");
+    
+    c4->cd(4);
+    TGraph *grhe4 = new TGraph(splits,utList,highER4);
+    grhe4->SetTitle("Counts with energy > 30 keV");
+    grhe4->GetXaxis()->SetLimits(1446000000,1504000000);
+    grhe4->GetYaxis()->SetRangeUser(0.01,0.026);
+    grhe4->SetMarkerStyle(20);
+    grhe4->Draw();
+
+    TGraph *grhe4With = new TGraph(splitsWith,utListWith,highER4With);
+    grhe4With->SetMarkerStyle(20);
+    grhe4With->SetMarkerColor(4);
+    grhe4With->Draw("PL");
 //    
 //    // SDD 5 ------------------------------------------
 //    
-//    TCanvas *c5 = new TCanvas("c5", "c5", 800, 600);
-//    c5->Divide(2,2);
-//    
-//    c5->cd(1);
-//    TGraph *grb5 = new TGraph(splits,utList,backgR5);
-//    grb5->SetMarkerStyle(20);
-//    grb5->Draw();
-//    
-////    c5->cd(2);
-////    TGraph *grr5 = new TGraph(splits,utList,rejR5);
-////    grr5->SetMarkerStyle(20);
-////    grr5->Draw();
-//    
+    TCanvas *c5 = new TCanvas("SDD5", "SDD5", 800, 600);
+    c5->Divide(2,2);
+    
+    c5->cd(1);
+    TGraph *grb5 = new TGraph(splits,utList,backgR5);
+    grb5->SetTitle("Background 7 - 30 keV");
+    grb5->SetMarkerStyle(20);
+    grb5->GetXaxis()->SetLimits(1446000000,1504000000);
+    grb5->GetYaxis()->SetRangeUser(0.0075,0.02);
+    grb5->Draw();
+
+    
+    TGraph *grb5With = new TGraph(splitsWith,utListWith,backgR5With);
+    grb5With->SetMarkerStyle(20);
+    grb5With->SetMarkerColor(4);
+    grb5With->Draw("PL");
+
 //    c5->cd(2);
-//    TGraph *grcu5 = new TGraph(splits,utList,cuR5);
-//    grcu5->SetMarkerStyle(20);
-//    grcu5->Draw();
-//    
-//    c5->cd(3);
-//    TGraph *grs5 = new TGraph(splits,utList,sourceR5);
-//    grs5->SetMarkerStyle(20);
-//    grs5->Draw();
-//    
-//    c5->cd(4);
-//    TGraph *grhe5 = new TGraph(splits,utList,highER5);
-//    grhe5->SetMarkerStyle(20);
-//    grhe5->Draw();
+//    TGraph *grr5 = new TGraph(splits,utList,rejR5);
+//    grr5->SetMarkerStyle(20);
+//    grr5->Draw();
+    
+    c5->cd(2);
+
+    TGraph *grcu5 = new TGraph(splits,utList,cuR5);
+    grcu5->SetTitle("Background 7 - 10 keV");
+    grcu5->SetMarkerStyle(20);
+    grcu5->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grcu5->GetYaxis()->SetRangeUser(0.0075,0.02);
+    grcu5->Draw();
+
+    TGraph *grcu5With = new TGraph(splitsWith,utListWith,cuR5With);
+    grcu5With->SetMarkerStyle(20);
+    grcu5With->SetMarkerColor(4);
+    grcu5With->Draw("PL");
+    
+    c5->cd(3);
+    TGraph *grs5 = new TGraph(splits,utList,sourceR5);
+    grs5->SetTitle("Counts from Fe-55 source");
+    grs5->GetXaxis()->SetLimits(1446000000,1504000000);
+    grs5->SetMarkerStyle(20);
+    grs5->Draw();
+
+    TGraph *grs5With = new TGraph(splitsWith,utListWith,sourceR5With);
+    grs5With->SetMarkerStyle(20);
+    grs5With->SetMarkerColor(4);
+    grs5With->Draw("PL");
+    
+    c5->cd(4);
+    TGraph *grhe5 = new TGraph(splits,utList,highER5);
+    grhe5->SetTitle("Counts with energy > 30 keV");
+    grhe5->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grhe5->GetYaxis()->SetRangeUser(0.05,0.026);
+    grhe5->SetMarkerStyle(20);
+    grhe5->Draw();
+
+    TGraph *grhe5With = new TGraph(splitsWith,utListWith,highER5With);
+    grhe5With->SetMarkerStyle(20);
+    grhe5With->SetMarkerColor(4);
+    grhe5With->Draw("PL");
 //    
 //    // SDD 6 ------------------------------------------
 //    
-//    TCanvas *c6 = new TCanvas("c6", "c6", 800, 600);
-//    c6->Divide(2,2);
-//    
-//    c6->cd(1);
-//    TGraph *grb6 = new TGraph(splits,utList,backgR6);
-//    grb6->SetMarkerStyle(20);
-//    grb6->Draw();
-//    
-////    c6->cd(2);
-////    TGraph *grr6 = new TGraph(splits,utList,rejR6);
-////    grr6->SetMarkerStyle(20);
-////    grr6->Draw();
-//    
+    TCanvas *c6 = new TCanvas("SDD6", "SDD6", 800, 600);
+    c6->Divide(2,2);
+    
+    c6->cd(1);
+    TGraph *grb6 = new TGraph(splits,utList,backgR6);
+    grb6->SetTitle("Background 7 - 30 keV");
+    grb6->SetMarkerStyle(20);
+    grb6->GetXaxis()->SetLimits(1446000000,1504000000);
+    grb6->GetYaxis()->SetRangeUser(0.0075,0.02);
+    grb6->Draw();
+
+    
+    TGraph *grb6With = new TGraph(splitsWith,utListWith,backgR6With);
+    grb6With->SetMarkerStyle(20);
+    grb6With->SetMarkerColor(4);
+    grb6With->Draw("PL");
+
 //    c6->cd(2);
-//    TGraph *grcu6 = new TGraph(splits,utList,cuR6);
-//    grcu6->SetMarkerStyle(20);
-//    grcu6->Draw();
-//    
-//    c6->cd(3);
-//    TGraph *grs6 = new TGraph(splits,utList,sourceR6);
-//    grs6->SetMarkerStyle(20);
-//    grs6->Draw();
-//    
-//    c6->cd(4);
-//    TGraph *grhe6 = new TGraph(splits,utList,highER6);
-//    grhe6->SetMarkerStyle(20);
-//    grhe6->Draw();
+//    TGraph *grr6 = new TGraph(splits,utList,rejR6);
+//    grr6->SetMarkerStyle(20);
+//    grr6->Draw();
+    
+    c6->cd(2);
+
+    TGraph *grcu6 = new TGraph(splits,utList,cuR6);
+    grcu6->SetTitle("Background 7 - 10 keV");
+    grcu6->SetMarkerStyle(20);
+    grcu6->GetXaxis()->SetLimits(1446000000,1504000000);
+    grcu6->GetYaxis()->SetRangeUser(0.0015,0.003);
+    grcu6->Draw();
+
+    TGraph *grcu6With = new TGraph(splitsWith,utListWith,cuR6With);
+    grcu6With->SetMarkerStyle(20);
+    grcu6With->SetMarkerColor(4);
+    grcu6With->Draw("PL");
+    
+    c6->cd(3);
+    TGraph *grs6 = new TGraph(splits,utList,sourceR6);
+    grs6->SetTitle("Counts from Fe-55 source");
+    grs6->GetXaxis()->SetLimits(1446000000,1504000000);
+    grs6->SetMarkerStyle(20);
+    grs6->Draw();
+
+    TGraph *grs6With = new TGraph(splitsWith,utListWith,sourceR6With);
+    grs6With->SetMarkerStyle(20);
+    grs6With->SetMarkerColor(4);
+    grs6With->Draw("PL");
+    
+    c6->cd(4);
+    TGraph *grhe6 = new TGraph(splits,utList,highER6);
+    grhe6->SetTitle("Counts with energy > 30 keV");
+    grhe6->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grhe6->GetYaxis()->SetRangeUser(0.06,0.026);
+    grhe6->SetMarkerStyle(20);
+    grhe6->Draw();
+
+    TGraph *grhe6With = new TGraph(splitsWith,utListWith,highER6With);
+    grhe6With->SetMarkerStyle(20);
+    grhe6With->SetMarkerColor(4);
+    grhe6With->Draw("PL");
     
     
     
@@ -1132,11 +1324,11 @@ void CheckBackground( TString rootfile,  TString place, Int_t divider, Int_t par
     Double_t rate_source[6] = {0};
     
     Int_t lbound_bg = 7000;
-    Int_t ubound_bg = 30000;
+    Int_t ubound_bg = 20000;
     Int_t counter_bg[6] = {0};
     Double_t rate_bg[6] = {0};
     
-    Int_t lbound_he = 30000;
+    Int_t lbound_he = 20000;
     Int_t ubound_he = 70000;
     Int_t counter_he[6] = {0};
     Double_t rate_he[6] = {0};
