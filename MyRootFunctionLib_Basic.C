@@ -38,36 +38,81 @@ tr->Draw("adc[3]>>htemp(500,0,4200)","tdc[13]>5000 && adc[3]>80")
 tr->Draw("adc[3]>>htemp1(500,0,4200)","tdc[13]>5000", "same")
 */
 
-void calcBeta(Int_t signalCounts, Int_t backGCounts, Double_t detEff, Double_t deltaT, Double_t current, Double_t lengthT, Int_t upLimitBayes = -1 ){
+void calcBeta(Int_t signalCounts, Int_t backGCounts, Double_t detEff, Double_t deltaT, Double_t current, Double_t lengthT, Double_t absProb, Int_t upLimitBayes = -1 ){
     
-    //calcBeta(4667,4346,0.01,81.42,100,0.1)
-    //calcBeta(4667,4346,0.01,81.42,100,0.1,582)
+    //calcBeta(4667,4346,0.01,81.42,100,0.1,0.1)
+    //calcBeta(4667,4346,0.01,81.42,100,0.1,0.1,582)
+    
+    // calcBeta(4015,3995,0.0182,81.42,100,0.071,0.1)
     
     Double_t meanFree = 3.9; // x 10-8
     Double_t eCharge  = 1.6; // x 10-19
-    Double_t absProb  = 0.1;
     
     Double_t mpv = signalCounts - backGCounts;
     
     Double_t sigma = TMath::Sqrt(signalCounts + backGCounts);
     
-    Double_t upLimit = mpv + 3 * sigma;
-    //Double_t upLimit = 3 * sigma;
+    //Double_t upLimit = mpv + 3 * sigma;
+    Double_t upLimit = 3 * sigma;
 
     
     if( upLimitBayes != -1 ){ upLimit = upLimitBayes; }
     
-    Double_t multFactor = ((1/absProb) * meanFree * eCharge) / ( lengthT * current * deltaT * 86400 * detEff );
+    Double_t multFactor = (meanFree * eCharge) / ( absProb * lengthT * current * deltaT * 86400 * detEff );
     
     Double_t beta22 = upLimit * multFactor;
     
     cout << "most probable value for detected non-Paulin transitions: " << mpv << " +/- " << sigma << endl << endl;
     
     cout << "upper limit of counts: " << upLimit << endl;
+    cout << "the number of detected photons from forbidden transitions if beta == 1 is: " << 1/multFactor << " * 10^(27) " << endl << endl;
+    
     cout << "beta2/2 = " << beta22 * 100 << " * 10^-29 "<< endl; 
     
     
 }
+
+void calcBetaWithVIP(Int_t signalCounts, Int_t backGCounts, Double_t detEff, Double_t deltaT, Double_t current, Double_t lengthT, Double_t absProb, Int_t upLimitBayes = -1 ){
+    
+    //calcBetaWithVIP(4667,4346,0.01,81.42,100,0.1,0.1)
+    //calcBetaWithVIP(4667,4346,0.01,81.42,100,0.1,0.1,582)
+    
+    Double_t meanFree = 3.9; // x 10-8
+    Double_t eCharge  = 1.6; // x 10-19
+    
+    //Double_t mpv = signalCounts - backGCounts;
+    
+    //Double_t IDeltaT_VIP = 34824000; // in Coulomb
+    Double_t current_VIP = 40;
+    Double_t deltaT_VIP = 276.6;
+    Double_t lengthT_VIP = 0.088;
+    Double_t detEff_VIP = 0.01;
+    Double_t sigma_VIP = 146;
+    
+    Double_t sigma = TMath::Sqrt(signalCounts + backGCounts);
+    
+    //Double_t upLimit = mpv + 3 * sigma;
+    //Double_t upLimit = 3 * sigma;
+    
+    Double_t upLimit_Total = 3 * TMath::Sqrt(sigma * sigma + sigma_VIP * sigma_VIP);
+
+    
+    if( upLimitBayes != -1 ){ upLimit = upLimitBayes; }
+    
+    Double_t multFactor = (meanFree * eCharge) / ( current_VIP * deltaT_VIP * 86400 * detEff_VIP * lengthT_VIP * absProb + current * deltaT * 86400 * detEff  * lengthT  * absProb);
+    
+    Double_t beta22 = upLimit_Total * multFactor;
+    
+    //cout << "most probable value for detected non-Paulin transitions: " << mpv << " +/- " << sigma << endl << endl;
+    
+    cout << "upper limit of total counts counts: " << upLimit_Total << endl;
+    cout << "the number of detected photons from forbidden transitions if beta == 1 is: " << 1/multFactor << " * 10^(27) " << endl << endl;
+    cout << "beta2/2 = " << beta22 * 100 << " * 10^-29 "<< endl; 
+    
+    
+}
+
+
 
 
 void AddSubtrHistograms(){
@@ -124,9 +169,9 @@ void AddSubtrHistograms(){
     delete f;
 }
 
-void SaveFinalHistograms(){
+void SaveFinalHistograms(Int_t reBin){
     
-    TFile *f = new TFile("/home/andreas/vip2/data/root/LNGS/1-618files-final/energyHistograms.root");
+    TFile *f = new TFile("/home/andreas/vip2/data/root/LNGS/1-618files-final/energyHistograms_40keV.root");
     
     TString withString = "with";
     TString noString = "no";
@@ -139,8 +184,9 @@ void SaveFinalHistograms(){
     
         TCanvas *cc = new TCanvas("cc", "cc", 800, 600);
         cc->cd();
-        histString = Form(noString + "Currentsdd" + "%d", sdd );
+        histString = Form(noString + "CurrentSmallsdd" + "%d", sdd );
         h = (TH1F*)f->Get(histString);
+        h->Rebin(reBin);
         gPad->SetLogy();
         h->Draw();
         saveString = "/home/andreas/vip2/reports/Analysis/Plots/" + histString + ".pdf";
@@ -211,26 +257,30 @@ TH1F* HistoFromTree(TString rootfile, TString place, Int_t sdd){ // not working 
 }
 
 
-void SaveFinalHisto(TString inFile, TString outFile, TString place){ 
+void SaveFinalHisto(TString inFile, TString outFile, TString place, Double_t time){ 
     // saving histograms from tree of final rootfile to another rootfile with scintillator rejection cut
     // scintillator selection cut disabled now bc of varying scintillator rejection rate
-    // SaveFinalHisto("withCurrent","energyHistograms","lngs")
-    // SaveFinalHisto("noCurrentSmall","energyHistograms","lngs")
+    // SaveFinalHisto("withCurrent","energyHistograms","lngs",-1)
+    // SaveFinalHisto("noCurrentSmall","energyHistograms","lngs",-1)
+    // put time in days if you want to scale the counts of the histograms to 1 day
 
   
   Int_t adcChannelList[6] = {0,2,3,5,6,7};
   Double_t energyList[16];
   Short_t trgid;
+  Short_t adcDig[10];
   
 
   Int_t size = place.Sizeof();
   TString inFileName, outFileName;
 
-  if(size==4)inFileName = ROOT_PATH_SMI + "/" + inFile;
+  if(size==4)inFileName = ROOT_PATH_SMI + "/15files-final/" + inFile + ".root";
   if(size==5)inFileName = ROOT_PATH_LNGS + "/1-618files-final/" + inFile + ".root";
+  //if(size==5)inFileName = ROOT_PATH_LNGS + "/1-618files-parts/" + inFile + ".root";
   
-  if(size==4)outFileName = ROOT_PATH_SMI + "/" + outFile;
+  if(size==4)outFileName = ROOT_PATH_SMI + "/15files-final/" + outFile + ".root";
   if(size==5)outFileName = ROOT_PATH_LNGS + "/1-618files-final/" + outFile + ".root";
+  //if(size==5)outFileName = ROOT_PATH_LNGS + "/1-618files-parts/" + outFile + ".root";
 
   //cout << rootfilename << endl;
 
@@ -241,6 +291,7 @@ void SaveFinalHisto(TString inFile, TString outFile, TString place){
   
   TBranch *energyB;
   TBranch *trgidB;
+  TBranch *adcDigB;
   
   TString name1 = inFile + "sdd1";
   TString name2 = inFile + "sdd2";
@@ -254,9 +305,11 @@ void SaveFinalHisto(TString inFile, TString outFile, TString place){
   //adcEvent = tree->GetBranch("padc");
   energyB = tree->GetBranch("energy");
   trgidB = tree->GetBranch("trgid");
+  adcDigB = tree->GetBranch("adc_dig");
   
   energyB->SetAddress(energyList);
   trgidB->SetAddress(&trgid);
+  adcDigB->SetAddress(adcDig);
 
   Int_t nevent = tree->GetEntries();
 
@@ -268,6 +321,15 @@ void SaveFinalHisto(TString inFile, TString outFile, TString place){
   TH1F *sdd6H = new TH1F(name6,"", 9000, 1000, 10000);
   
   TH1F *sumH = new TH1F(nameSum,"", 9000, 1000, 10000);
+  
+//  TH1F *sdd1H = new TH1F(name1,"", 39000, 1000, 40000);
+//  TH1F *sdd2H = new TH1F(name2,"", 39000, 1000, 40000);
+//  TH1F *sdd3H = new TH1F(name3,"", 39000, 1000, 40000);
+//  TH1F *sdd4H = new TH1F(name4,"", 39000, 1000, 40000);
+//  TH1F *sdd5H = new TH1F(name5,"", 39000, 1000, 40000);
+//  TH1F *sdd6H = new TH1F(name6,"", 39000, 1000, 40000);
+//  
+//  TH1F *sumH = new TH1F(nameSum,"", 39000, 1000, 40000);
 
   
 
@@ -275,8 +337,9 @@ void SaveFinalHisto(TString inFile, TString outFile, TString place){
     
     energyB->GetEvent(i);
     trgidB->GetEvent(i);
+    adcDigB->GetEvent(i);
     
-    //if( trgid == 1 ){
+    if( (trgid == 1 || trgid == 4) && adcDig[7] == 1 ){
         
         sdd1H->Fill(energyList[0]);
         sdd2H->Fill(energyList[2]);
@@ -287,9 +350,20 @@ void SaveFinalHisto(TString inFile, TString outFile, TString place){
         
         
         
-    //}
+    }
     
  
+  }
+  
+  if( time != -1 ){
+      
+      sdd1H->Scale(1/time);
+      sdd2H->Scale(1/time);
+      sdd3H->Scale(1/time);
+      sdd4H->Scale(1/time);
+      sdd5H->Scale(1/time);
+      sdd6H->Scale(1/time);
+      
   }
   
   sumH->Add(sdd1H);
@@ -528,6 +602,137 @@ Int_t GetRunTime(TString rootfile, TString place, Int_t divider, Int_t part, Int
   //cout << "lbound: " << lbound << " ubound: " << ubound << " nevent: " << nevent << endl;
 
   for( Int_t i = lbound; i <= ubound; i++){
+
+    clkEvent->GetEvent(i);
+    utEvent->GetEvent(i);
+    sec_curr = (int)evt_r.clk/1000; // second of current event
+
+    
+
+    t_gap = sec_curr - sec_buff;
+    //cout << i << endl;		
+
+    if( t_gap < 0 ) { fail_counter += 1;// cout << "BIG jump backward at: sec previous: " << sec_buff << " sec current: " << sec_curr << endl;
+    }
+    if( t_gap > 0 && t_gap < 10 ) {sec_counter += t_gap; }
+    if( t_gap > 10 && i != 0){ fail_counter += 1; 
+	//cout << "BIG jump forward at: sec previous: " << sec_buff << " sec current: " << sec_curr << endl;
+    }
+    
+    sec_buff = sec_curr;  
+
+  }
+  
+  /*
+  slope = GetSlope( rootfile, place, 1);
+  offset = GetOffset( rootfile, place, 1);
+  //cout << slope << " " << offset << endl;
+  Int_t nevent = tree->GetEntries();
+
+  for( Int_t i = 0; i < nevent; i++){
+
+      adcEvent->GetEvent(i);
+      bin_ch = evt_r.padc[0];
+      bin_ev = offset + bin_ch * slope;
+
+      if(bin_ev > 4300 && bin_ev < 4720){ ti_counter += 1; }       
+  
+  }
+
+
+ cout << ti_counter << endl;
+ 
+ sec = ti_counter / ti_rate;
+ */
+
+ sec = (int)sec_counter/1;
+ //cout << "The duration of this rootfile is approx " << sec << " seconds" << endl;
+ day  = (Int_t)sec/(86400);
+ hour = (Int_t)(sec - (day * 86400))/(3600);
+ min  = (Int_t)(sec - (day * 86400 + hour * 3600))/(60);
+
+ cout << "That is about " <<  day << " days, " << hour << " hours, " << min << " minutes" << endl;
+ cout << "Also there were around " << fail_counter << " events with no ms clock timing information or big gaps between events" << endl;
+
+ sec = (Int_t)sec;
+ 
+ f->Close();
+ delete f;
+ return sec;
+
+}
+  
+  
+  
+  Int_t GetRunTimeIndices(TString rootfile, TString place, Int_t lowIndex, Int_t highIndex){
+
+// this function returns the runtime of the given rootfile on the base of the Labview millisecond clock - it goes through the events event by event and looks at the ms time tags
+// these time tags should be steadily rising
+// if the new event takes place x<10 seconds after the previous one,  x seconds are added to the total count
+// it counts the seconds in which some events happens - if there is no event for 10 seconds or more, it is counted as a gap and this time is not taken into account
+// also events which have some wrong timing information are discarded for this analysis
+// the labview ms clock takes values from -2*10^9 - 2 * 10^9 (= 4*10^6 seconds ~ 46 days 7 h 6 min ) ... in that region consecutive events have consecutive timestamps 
+// once the clock reaches the upper limit it resets back to the negative limit
+// useful: tr->Draw("evid:clk>>htmp(1000,0,1000000000,1000,0,50000)") .... limits for ms clock to be changed
+
+    
+    // update: switch to milliseconds as the time unit 
+    //update 2: switch to being able to get run time of parts of the rootfile
+
+  /*Double_t slope;
+  Double_t offset;
+  Double_t bin_ev; 
+  Int_t bin_ch;
+  Int_t ti_counter = 0;
+  Double_t ti_rate = 0.107125;*/
+  Double_t sec;
+  Int_t hour, day, min;
+
+  Int_t sec_curr = 0, sec_buff = 0, sec_counter = 0;
+  Int_t fail_counter = 0;
+  Int_t t_gap;
+ 
+  Int_t* ind_array;
+  
+  
+  Int_t lbound = 0;
+  Int_t ubound = 0;
+
+  EventStruct  evt_r;
+
+  Int_t size = place.Sizeof();
+  TString rootfilename;
+
+  if(size==4)rootfilename = ROOT_PATH_SMI + "/" + rootfile;
+  if(size==5)rootfilename = ROOT_PATH_LNGS + "/" + rootfile;
+  
+  //cout << rootfilename << endl;
+
+  //TFile *f = new TFile(rootfilename, "READ");
+  TFile *f = TFile::Open(rootfilename, "READ");
+  TTree *tree = (TTree*)f->Get("tr");
+
+  //TBranch *adcEvent   = tree->GetBranch("adc");
+  //adcEvent->SetAddress(evt_r.padc);  
+
+  TBranch *clkEvent   = tree->GetBranch("clk");
+  clkEvent->SetAddress(&evt_r.clk);
+  
+  TBranch *utEvent   = tree->GetBranch("ut");
+  utEvent->SetAddress(&evt_r.ut);
+
+  
+  //cout << "starting time: " << sec_buff << endl;
+
+  Int_t nevent = tree->GetEntries();
+  
+  clkEvent->GetEvent(lbound);
+  sec_buff = (int)evt_r.clk/1000 - 1;
+  
+
+  //cout << "lbound: " << lbound << " ubound: " << ubound << " nevent: " << nevent << endl;
+
+  for( Int_t i = lowIndex; i <= highIndex; i++){
 
     clkEvent->GetEvent(i);
     utEvent->GetEvent(i);
@@ -1791,6 +1996,25 @@ Double_t GetRate(TString rootfile, Int_t lbound, Int_t ubound, TString place){
   return rate_final;
   
 }
+
+void plotHistograms(TString histWith, TString histWithout){
+    
+    TString rootFileName = ROOT_PATH_LNGS + "/1-618files-parts/energyHistograms.root";
+    TFile *f = new TFile(rootFileName);
+    
+    TH1F *withH = (TH1F*)f->Get(histWith);
+    TH1F *noH = (TH1F*)f->Get(histWithout);
+    
+    withH->Rebin(25);
+    noH->Rebin(25);
+    
+    withH->SetLineColor(kRed);
+    
+    withH->Draw();
+    noH->Draw("same");
+    
+    
+}
 /*
 
 
@@ -1832,3 +2056,10 @@ void MakeOneTDC2dPlot(TString rootfile){
 }
 */
 
+Double_t calcSigma(Double_t fano, Double_t constN, Double_t energy){
+    
+    Double_t sigma = sqrt(energy * SiW * fano + constN * constN);
+    
+    return sigma;
+    
+}

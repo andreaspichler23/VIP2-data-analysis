@@ -65,7 +65,6 @@ typedef struct{
 
 /////////////////
 // Functions 
-//Int_t ReadData( TString datafilename, TString root_file, Int_t qdc_th[NScinti], TString place, int& root_file_event_counter ); 
 Int_t ReadData( TString datafilename, TString root_file, TString place, int& root_file_event_counter ); 
 void MakeTree( TString filelist, TString rootfilename, TString place );
 //void MakePlots(TString rootfile, Int_t qdc_th[NScinti] );

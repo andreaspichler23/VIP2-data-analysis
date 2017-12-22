@@ -31,6 +31,148 @@
 #include  "CalibFunction.C"
 #include  "MyRootFunctionLib_Basic.C"
 
+void FitFullRangeEnergyHisto(Int_t rebin, TString histName){
+    
+    //Double_t  ti_gain_setvalue = 2000000 * rebin;  // change here for LNGS data
+    //Double_t  mn_gain_setvalue = 500000 * rebin;
+    //Double_t  cu_gain_setvalue = mn_gain_setvalue/30;
+    
+    Double_t  ti_gain_setvalue = 10000 * rebin;
+    Double_t  mn_gain_setvalue = 1000 * rebin;
+    Double_t  cu_gain_setvalue = mn_gain_setvalue/5; // this is for smi data
+    
+    Double_t bg_setvalue = rebin; // for lngs = 20 * rebin
+    
+    Double_t  l_bin = 2000.;
+    Double_t  u_bin = 10000.; 
+    Int_t nPar = 29;
+    Double_t fitPar[nPar];
+    Double_t fano, constN;
+    Double_t sigCu, sigMn, sigTi;
+    
+    //TFile *f = new TFile("/home/andreas/vip2/data/root/LNGS/1-618files-final/energyHistograms.root");
+    TFile *f = new TFile("/home/andreas/vip2/data/root/SMI/15files-final/energyHistograms.root");
+    
+    TH1F *eHist = (TH1F*)f->Get(histName);
+    eHist->Rebin(rebin);
+    
+    //eHist->Draw();
+    
+    TF1 *fcnFit = new TF1("fcnFit", TiMnCuFullFitFunc_Energy, l_bin, u_bin, nPar );
+    
+    fcnFit->SetParNames("TiKaSig", "TiKbSig", "MnKaSig", "MnKbsig", "BackG", // parameters 0 ... 9
+                            "TiKa1Ch", "TiKa1Gain", "TiKbCh", "RTiKbKa",
+                            "MnKa1Ch");
+    fcnFit->SetParName( 10, "MnKa1Gain ");
+    fcnFit->SetParName( 11, "MnKbCh    ");
+    fcnFit->SetParName( 12, "RMnKbKa   ");
+    fcnFit->SetParName( 13, "EscapeGain");        
+    fcnFit->SetParName( 14, "tShift    ");
+    fcnFit->SetParName( 15, "tGainTiKa   ");
+    fcnFit->SetParName( 16, "tGainTiKb   ");
+    fcnFit->SetParName( 17, "tGainMnKa   ");
+    fcnFit->SetParName( 18, "tGainMnKb   ");
+    fcnFit->SetParName( 19, "tTiBeta     ");
+    fcnFit->SetParName( 20, "tMnBeta     ");
+    fcnFit->SetParName( 21, "shelfGain   ");
+    fcnFit->SetParName( 22, "CuKa1Ch   ");
+    fcnFit->SetParName( 23, "CuKa1Gain     ");
+    fcnFit->SetParName( 24, "CuKbCh   ");
+    fcnFit->SetParName( 25, "RCuKbKa      ");
+    fcnFit->SetParName( 26, "tGainCu     ");
+    fcnFit->SetParName( 27, "CuKaSig     ");
+    fcnFit->SetParName( 28, "CuKbSig     ");
+    
+    fcnFit->SetParameter(0, 50);                 //tika sig
+    fcnFit->SetParLimits(0, 0.,  100.);        // 9.8.2017: upper limit changed to setvalue *20 from *10
+    fcnFit->SetParameter(1 , 60.);
+    fcnFit->SetParLimits(1 , 0., 100.);
+    fcnFit->SetParameter(2 , 60.);
+    fcnFit->SetParLimits(2 , 0., 100.);   
+    fcnFit->SetParameter(3, 80 );          
+    fcnFit->SetParLimits(3, 0., 100.);               
+    fcnFit->SetParameter(4, bg_setvalue );           
+    fcnFit->SetParLimits(4, 0, 1000.);           
+    fcnFit->SetParameter(5, TiKa1);         // TiKa1 mean in ch
+    fcnFit->SetParLimits(5, TiKa1 - 20, TiKa1 + 20);
+    fcnFit->SetParameter(6, ti_gain_setvalue);     // TiKa1 gain
+    fcnFit->SetParLimits(6, 100, 1.e9);
+    fcnFit->SetParameter(7, TiKb1);       // TiKb mean in ch
+    fcnFit->SetParLimits(7, TiKb1 - 20, TiKb1 + 20);
+    fcnFit->SetParameter(8, 0.26);                  // Ti Kb to Ka gain ratio
+    fcnFit->SetParLimits(8, 0.05, 1.);              // 9.8.2017: upper limit changed to 1. from 0.8
+    fcnFit->SetParameter(9, MnKa1);         // MnKa1 mean in ch
+    fcnFit->SetParLimits(9, MnKa1 - 20, MnKa1 + 20);
+    fcnFit->SetParameter(10, mn_gain_setvalue);    // MnKa1 gain
+    fcnFit->SetParLimits(10, 10., 1.e9);
+    fcnFit->SetParameter(11, MnKb1);      // MnKb mean in ch
+    fcnFit->SetParLimits(11, MnKb1 - 20, MnKb1 + 20);
+    fcnFit->SetParameter(12, 0.7);                 // Mn Kb to Ka gain ratio -> high for LNGS data
+    fcnFit->SetParLimits(12, 0.4, 1.);        // 9.8.2017: upper bound: 0.8 -> 1
+    fcnFit->SetParameter(14, 50.);                 // Tail mean shift eV !!
+    fcnFit->SetParLimits(14, 0., 200.);           // lower limit 100 to 30. 22/02/2010
+    fcnFit->SetParameter(13, 0.01);                 // Escape peak gain
+    fcnFit->SetParLimits(13, 0.0001, 0.05);
+
+
+    fcnFit->SetParameter(15, 0.2);                 // Tail gain ratio ti Ka ---- set gains to 0.2 from 0.02
+    fcnFit->SetParLimits(15, 0.001, 0.60);           // upper 0.2 to 0.60 
+    fcnFit->SetParameter(16, 0.2);                 // Tail gain ratio ti Kb
+    fcnFit->SetParLimits(16, 0.001, 0.8);          // upper 0.2 to 0.40 22/02/2010
+    fcnFit->SetParameter(17, 0.2);                 // Tail gain ratio mn Ka
+    fcnFit->SetParLimits(17, 0.001, 0.40);           // upper 0.2 to 0.60 
+
+    fcnFit->SetParameter(18, 0.2);                 // Tail gain ratio mn Kb 
+    fcnFit->SetParLimits(18, 0.001, 0.55);          // upper 0.2 to 0.40 22/02/2010
+
+    fcnFit->SetParameter(19, 10.);                  // Ti Tail beta slope, from Sato report
+    fcnFit->SetParLimits(19, 1., 100.);
+    fcnFit->SetParameter(20, 10.);                  // Mn Tail beta slope, from Sato report
+    fcnFit->SetParLimits(20, 1., 100.);
+    fcnFit->SetParameter(21, 0.001);                  // shelf gain
+    fcnFit->SetParameter(22, CuKa1);         // CuKa1 mean in ch
+    fcnFit->SetParLimits(22, CuKa1 - 20, CuKa1 + 20);
+    fcnFit->SetParameter(23, cu_gain_setvalue);     // CuKa1 gain
+    fcnFit->SetParLimits(23, 1, cu_gain_setvalue * 10);
+    fcnFit->SetParameter(24, CuKb1);       // CuKb mean in ch
+    fcnFit->SetParLimits(24, CuKb1 - 20, CuKb1 + 20);
+    fcnFit->SetParameter(25, 0.26);                  // Cu Kb to Ka gain ratio
+    fcnFit->SetParLimits(25, 0.05, 3);
+    fcnFit->SetParameter(26, 0.2);                 // Tail gain ratio all Cu lines
+    fcnFit->SetParLimits(26, 0.000001, 0.40);           // upper 0.2 to 0.60 
+    fcnFit->SetParameter(27, 85.);                 
+    fcnFit->SetParLimits(27, 0., 100.);  
+    fcnFit->SetParameter(28, 90.);                 
+    fcnFit->SetParLimits(28, 60., 120.); 
+    
+    eHist->Fit("fcnFit","R");
+    fcnFit->GetParameters(fitPar);
+    Double_t sigmaTi = fcnFit->GetParError(0);
+    Double_t sigmaMn = fcnFit->GetParError(2);
+    
+    fano = 1/SiW * ( fitPar[2] * fitPar[2] - fitPar[0] * fitPar[0] ) / ( MnKa1 - TiKa1 );
+    Double_t fanoEr = sqrt( (2*fitPar[2])/(SiW*( MnKa1 - TiKa1 )) * (2*fitPar[2])/(SiW*( MnKa1 - TiKa1 )) *  sigmaMn * sigmaMn + (2*fitPar[0])/(SiW*( MnKa1 - TiKa1 )) * (2*fitPar[0])/(SiW*( MnKa1 - TiKa1 )) *  sigmaTi * sigmaTi);
+            
+    constN = sqrt( fitPar[0] * fitPar[0] - TiKa1 * SiW * fano );
+    
+    sigCu = calcSigma(fano, constN, CuKa1);
+    sigTi = calcSigma(fano, constN, TiKa1);
+    sigMn = calcSigma(fano, constN, MnKa1);
+    
+    //cout << fitPar[0] << " " << fitPar[2] << " " << fano << " " << constN << endl << endl;
+    
+    cout << endl << "Sigma at Cu: " << sigCu  << " +- 0.2 eV (error = estimated as 4 * error of mn and ti)"<<  endl;
+    cout << "FWHM  at Cu: " << sigCu * 2.355  << " +- 0.5 eV (error = estimated as 4 * error of mn and ti)"<< endl;
+    cout << "FWHM  at Mn: " << sigMn * 2.355 << endl;
+    cout << "FWHM  at Ti: " << sigTi * 2.355 << endl;
+    cout << "FANO: " << fano << endl;
+    cout << "FANO Error: " << fanoEr << endl;
+    cout << "constant noise: " << constN << " eV" << endl;
+    
+    
+    
+}
+
 void fitGaussSubHist(TString histName, Int_t rebin){
     
     //fitGaussSubHist("SubHistSum",25)
@@ -40,8 +182,8 @@ void fitGaussSubHist(TString histName, Int_t rebin){
     TH1F *subH = (TH1F*)fin->Get(histName);
     subH->Rebin(rebin);
     
-    Int_t ll = 7500;
-    Int_t ul = 7900;
+    Int_t ll = 7529;
+    Int_t ul = 7929;
     
     TF1 *fitFunc = new TF1("fitFunc", gaussFunc, ll, ul, 3 );
     
@@ -56,7 +198,7 @@ void fitGaussSubHist(TString histName, Int_t rebin){
     mpv = mpv / rebin;
     
     Double_t sigma = fitFunc->GetParError(0);
-    sigma = TMath::Sqrt(sigma / rebin);
+    sigma = sigma / rebin;
     
     cout << " Pauli violating counts: " << mpv << " +- " << sigma << endl;
     
@@ -65,19 +207,21 @@ void fitGaussSubHist(TString histName, Int_t rebin){
 }
 
 void FitHistogram(  TString histString, Int_t savePlot, Int_t rebin ){
-    
-    
+    // fits histogram histString in the Cu region
+    //FitHistogram("withCurrentSum",0,25)
+    // pay attention that you dont write sthg to fitFile, in case you dont want to
     Double_t counts;
     Int_t lowerL = 7000;
-    Int_t upperL = 9500;
-    Int_t nPar = 11;
+    Int_t upperL = 10000;
+    Int_t nPar = 16; // 11 or 16
     
     Double_t fitResult[nPar+4];
     
-    ofstream fitFile;
-    fitFile.open("/home/andreas/vip2/reports/Analysis/CuFitFile.txt",ios::app);
+   // ofstream fitFile;
+   // fitFile.open("/home/andreas/vip2/reports/Analysis/CuFitFile.txt",ios::app);
     
-    TFile *inF = TFile::Open("/home/andreas/vip2/data/root/LNGS/1-618files-final/energyHistograms.root");
+    //TFile *inF = TFile::Open("/home/andreas/vip2/data/root/LNGS/1-618files-final/energyHistograms.root");
+    TFile *inF = TFile::Open("/home/andreas/vip2/data/root/SMI/15files-final/energyHistograms.root");
     TH1F *hist = (TH1F*)inF->Get(histString);
     
     hist->Rebin(rebin);
@@ -102,6 +246,7 @@ void FitHistogram(  TString histString, Int_t savePlot, Int_t rebin ){
     
     
     TF1 *fitFunc = new TF1("fitFunc", RoiCuFunc, lowerL, upperL, nPar );
+    //TF1 *fitFunc = new TF1("fitFunc", RoiCuFunc_NoTails, lowerL, upperL, nPar );
     
     fitFunc->SetParName(0,"Background constant");
     fitFunc->SetParName(10,"Background Slope");
@@ -118,12 +263,19 @@ void FitHistogram(  TString histString, Int_t savePlot, Int_t rebin ){
     fitFunc->SetParName(6,"Cu Kb Sigma");
     fitFunc->SetParName(9,"Ni Ka1 Sigma");
     
+    fitFunc->SetParName(11,"Tail Mean Shift");
+    fitFunc->SetParName(12,"Exponential Beta Cu Ka");
+    fitFunc->SetParName(13,"Tail gain ratio Ka");
+    fitFunc->SetParName(14,"Exponential Beta Cu Kb");
+    fitFunc->SetParName(15,"Tail gain ratio Kb");
+    
     
     fitFunc->SetParameter(0,backStart);
     fitFunc->SetParLimits(0,0,backStart*2);
     fitFunc->SetParameter(10,backSlopeStart);
     
     fitFunc->SetParameter(1,cuKa1GainStart);
+    //fitFunc->SetParameter(1,0.);
     fitFunc->SetParameter(4,cuKbGainStart);
     fitFunc->SetParameter(7,niKa1GainStart);
     //fitFunc->SetParLimits(1,0,cuKa1GainStart*2);
@@ -141,7 +293,31 @@ void FitHistogram(  TString histString, Int_t savePlot, Int_t rebin ){
     
     fitFunc->SetParLimits(9,sigmaStart-20,sigmaStart+20);
     
-    hist->Fit("fitFunc", "RI");
+    fitFunc->SetParameter(11,30.);
+    fitFunc->SetParLimits(11,0.,100.);
+    fitFunc->SetParameter(12,5.);
+    fitFunc->SetParLimits(12,4.,7.);
+    fitFunc->SetParameter(13,0.15);
+    fitFunc->SetParLimits(13,0.1,0.5);
+    fitFunc->SetParameter(14,5.);
+    fitFunc->SetParLimits(14,4.,7.);
+    fitFunc->SetParameter(15,0.5);
+    fitFunc->SetParLimits(15,0.1,0.7);
+    
+    //fitFunc->Draw();
+    
+    
+    TCanvas *c1 = new TCanvas("c1", "c1", 800, 600);
+    c1->cd();
+    //gPad->SetLogy();
+    hist->Fit("fitFunc", "R");
+    c1->Clear();
+    
+    TRatioPlot *rp1 = new TRatioPlot(hist,"errfunc"); // no option specified.. histogram errors are used for the calculation; "errfunc" ... fit function value is used
+    rp1->Draw(); // option noconfint should work but does not; yellow ~ normally 2 sigma; green 1 sigma
+    rp1->GetLowerRefGraph()->SetMinimum(-4);
+    rp1->GetLowerRefGraph()->SetMaximum(4);  
+    c1->Update();
     
     fitFunc->GetParameters(fitResult);
     fitResult[nPar]     = fitFunc->GetChisquare();
@@ -149,19 +325,27 @@ void FitHistogram(  TString histString, Int_t savePlot, Int_t rebin ){
     fitResult[nPar+2]   = fitResult[nPar]/fitResult[nPar+1];
     fitResult[nPar+3]   = fitResult[3] * 2.355;
     
+     cout << endl << "fwhm is: " << fitResult[nPar+3] << " eV!" << endl;
+     cout << endl << "NDF: " << fitResult[nPar+1] << " Chi2: " << fitResult[nPar] << " reduced chi2: " << fitResult[nPar+2] << endl;
     
+    //TF1 *fcnTail   = new TF1("fcnTail",   tailFuncEnergy,  lowerL,  upperL, 8);  
+    //fcnTail->SetParameters(fitResult[3], fitResult[5], fitResult[11], fitResult[3], fitResult[3], fitResult[4], fitResult[14], fitResult[15]);  // for Kb
+    //fcnTail->SetParameters(fitResult[3], fitResult[2], fitResult[11], fitResult[3], fitResult[3], fitResult[1], fitResult[12], fitResult[13]); // for Ka
+    
+//    TCanvas *c2 = new TCanvas("c2", "c2", 800, 600);
+//    c2->cd();
+//    fcnTail->Draw();
     
     //fitFile << histString << " ";
     
-    cout << "fwhm is: " << fitResult[nPar+3] << " eV!" << endl;
     
-    for( Int_t i = 0; i <= nPar+3; i++ ){
-        
-        //fitFile << fitResult[i] << " ";
-        
-        
-    }
-    fitFile << endl;
+//    for( Int_t i = 0; i <= nPar+3; i++ ){
+//        
+//        fitFile << fitResult[i] << " ";
+//        
+//        
+//    }
+    //fitFile << endl;
     //hist->Draw();
     
     
@@ -187,9 +371,9 @@ void FitHistogram(  TString histString, Int_t savePlot, Int_t rebin ){
 //    fitFile << roiLL << " " << roiUL << " " << countsROI << " " << rebin << endl;
 //
 //    hist2->Delete();
-    inF->Close();
-    delete inF;
-    fitFile.close();
+    //inF->Close();
+    //delete inF;
+  //  fitFile.close();
  
     
 }
@@ -587,8 +771,10 @@ void AddCalibrationBranches(Int_t minFileNumber, Int_t maxFileNumber){
 
                 if(current == 1){
                     
-                    energyTmp = calcEnergy(adcChannel[2], calibList[27], calibList[29], Ord2CoeffWithout[1]);
-                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[27], Ord2CoeffWithout[1]);
+                    //cout << "i am here" << endl;
+                    
+                    energyTmp = calcEnergy(adcChannel[2], calibList[27], calibList[29], Ord2CoeffWith[1]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[27], Ord2CoeffWith[1]);
 
                 }
 
@@ -596,6 +782,301 @@ void AddCalibrationBranches(Int_t minFileNumber, Int_t maxFileNumber){
                 binHighE = energyTmp + channelWidthTmp/2;
                 
                 energyEv[2] = binLowE + randN * ( binHighE - binLowE );
+                //cout << "energy: " << energyEv[2] << " " << energyTmp << " " << adcChannel[2] << " " << channelWidthTmp << endl;
+
+            }
+            
+            binLowE = ((adcChannel[3] - calibList[54]) / calibList[52]) - 1/(2 * calibList[52]);
+            binHighE = ((adcChannel[3] - calibList[54]) / calibList[52]) + 1/(2 * calibList[52]);
+            randN = randG.Rndm();
+            energyEv[3] = binLowE + randN * ( binHighE - binLowE );
+            
+            if( energyEv[3] > MnKa1 ){
+                
+                if(current == 0){
+                    
+                    energyTmp = calcEnergy(adcChannel[3], calibList[52], calibList[54], Ord2CoeffWithout[2]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[52], Ord2CoeffWithout[2]);
+
+                }else{
+                
+                    energyTmp = calcEnergy(adcChannel[3], calibList[52], calibList[54], Ord2CoeffWith[2]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[52], Ord2CoeffWith[2]);
+
+                }
+
+                binLowE = energyTmp - channelWidthTmp/2;
+                binHighE = energyTmp + channelWidthTmp/2;
+                
+                energyEv[3] = binLowE + randN * ( binHighE - binLowE );
+
+            }
+            
+            binLowE = ((adcChannel[5] - calibList[79]) / calibList[77]) - 1/(2 * calibList[77]);
+            binHighE = ((adcChannel[5] - calibList[79]) / calibList[77]) + 1/(2 * calibList[77]);
+            randN = randG.Rndm();
+            energyEv[5] = binLowE + randN * ( binHighE - binLowE );
+            
+            if( energyEv[5] > MnKa1 ){
+                
+                if(current == 0){
+                    
+                    energyTmp = calcEnergy(adcChannel[5], calibList[77], calibList[79], Ord2CoeffWithout[3]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[77], Ord2CoeffWithout[3]);
+
+                }else{
+                
+                    energyTmp = calcEnergy(adcChannel[5], calibList[77], calibList[79], Ord2CoeffWith[3]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[77], Ord2CoeffWith[3]);
+
+                }
+
+                binLowE = energyTmp - channelWidthTmp/2;
+                binHighE = energyTmp + channelWidthTmp/2;
+                
+                energyEv[5] = binLowE + randN * ( binHighE - binLowE );
+
+            }
+            
+            binLowE = ((adcChannel[6] - calibList[104]) / calibList[102]) - 1/(2 * calibList[102]);
+            binHighE = ((adcChannel[6] - calibList[104]) / calibList[102]) + 1/(2 * calibList[102]);
+            randN = randG.Rndm();
+            energyEv[6] = binLowE + randN * ( binHighE - binLowE );
+            
+            if( energyEv[6] > MnKa1 ){
+                
+                if(current == 0){
+                    
+                    energyTmp = calcEnergy(adcChannel[6], calibList[102], calibList[104], Ord2CoeffWithout[4]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[102], Ord2CoeffWithout[4]);
+
+                }else{
+                
+                    energyTmp = calcEnergy(adcChannel[6], calibList[102], calibList[104], Ord2CoeffWith[4]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[102], Ord2CoeffWith[4]);
+
+                }
+
+                binLowE = energyTmp - channelWidthTmp/2;
+                binHighE = energyTmp + channelWidthTmp/2;
+                
+                energyEv[6] = binLowE + randN * ( binHighE - binLowE );
+
+            }
+            
+            binLowE = ((adcChannel[7] - calibList[129]) / calibList[127]) - 1/(2 * calibList[127]);
+            binHighE = ((adcChannel[7] - calibList[129]) / calibList[127]) + 1/(2 * calibList[127]);
+            randN = randG.Rndm();
+            energyEv[7] = binLowE + randN * ( binHighE - binLowE );
+            
+            if( energyEv[7] > MnKa1 ){
+                
+                if(current == 0){
+                    
+                    energyTmp = calcEnergy(adcChannel[7], calibList[127], calibList[129], Ord2CoeffWithout[5]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[127], Ord2CoeffWithout[5]);
+
+                }else{
+                
+                    energyTmp = calcEnergy(adcChannel[7], calibList[127], calibList[129], Ord2CoeffWith[5]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[127], Ord2CoeffWith[5]);
+
+                }
+
+                binLowE = energyTmp - channelWidthTmp/2;
+                binHighE = energyTmp + channelWidthTmp/2;
+                
+                energyEv[7] = binLowE + randN * ( binHighE - binLowE );
+
+            }
+            
+            
+
+            energy->Fill();
+            cal->Fill();
+
+        }
+        
+        if( calibList[6] > 200 || calibList[31] > 200 || calibList[56] > 200 || calibList[71] > 200 || calibList[96] > 200 || calibList[121] > 200 ){
+                
+            logFile << "fwhm too high in file: " << rootFileName << endl;
+                
+        }
+            
+        if( calibList[2] < 0.08 || calibList[27] < 0.08 || calibList[52] < 0.08 || calibList[77] < 0.08 || calibList[102] < 0.08 || calibList[127] < 0.08 ){
+                
+            logFile << "slope too low in file: " << rootFileName << endl;
+                
+        }
+            
+        if( calibList[12] < 600 || calibList[37] < 0.08 || calibList[62] < 600 || calibList[87] < 600 || calibList[112] < 600 || calibList[137] < 600 ){
+                
+            logFile << "mnka1 position too low in file: " << rootFileName << endl;
+                
+        }
+
+        TFile *fwrite = TFile::Open(writeFileName, "NEW");
+        TTree *tr = tree->CloneTree();
+        
+        //tree->Print();
+        //gDirectory->pwd();
+        //fwrite->ls();
+        //tree->Write("",TObject::kOverwrite);
+        //fwrite->Write("", TObject::kOverwrite);
+        
+        tr->Write();
+        
+        //tree->Print();
+        froot->Close();
+        fwrite->Close();
+        delete fwrite;
+        delete froot;
+    }
+    
+    calibFile.close();
+    fileList.close();
+    logFile.close();
+    
+    
+    
+    return;
+}
+
+void AddCalibrationBranches_SMI(Int_t minFileNumber, Int_t maxFileNumber){
+    
+    // takes the information of many smaller rootfiles and writes the ttree to other rootfiles
+    // adds the information of the fit results and the energy of every event 
+    // Use $ROOTSYS/bin/hadd
+
+//hadd result.root file1.root file2.root .. fileN.root   to add rootfiles with same structure
+
+    Double_t calibList[150];
+    Short_t adcChannel[16];
+    Double_t energyEv[16];
+    Double_t binLowE, binHighE;
+    TString fileName, rootFileName, writeFileName;
+    TRandom3 randG;
+    Double_t randN;
+    Int_t current;
+    Double_t energyTmp, channelWidthTmp;
+    
+    Double_t Ord2CoeffWith[6] = {5.34213e-07,1.3487e-07,2.92066e-07,3.57834e-07,5.28058e-07,3.6126e-07};
+    Double_t Ord2CoeffWithout[6] = {3.81858e-07,0.,4.88842e-07,3.11132e-07,4.51601e-07,3.49158e-07};
+    
+    ifstream calibFile;
+    ifstream fileList;
+    ofstream logFile;
+    fileList.open(WORK_PATH + "/filelist/ListofFilelists_SMI.txt");
+    calibFile.open(WORK_PATH + "/calibrationlist/15files-SMI.txt");
+    logFile.open("/home/andreas/vip2/reports/Analysis/logfile.txt");
+    
+    for( Int_t fileCount = 1; fileCount <= maxFileNumber; fileCount++){
+        
+        fileList >> fileName;
+        
+        current = 0;
+        if (fileName.Contains("with")){ current = 1;}
+        
+        for( Int_t sdd = 1; sdd <= 6; sdd++ ){
+
+            for( Int_t i = 0; i <= 24; i++ ){
+
+                calibFile >> calibList[(sdd-1) * 25 + i];
+
+            }
+        }
+        
+        if( fileCount < minFileNumber ){ continue; } 
+        
+        rootFileName =  ROOT_PATH_SMI + "/15files-original/" + fileName + ".root"; 
+        //rootFileName =  ROOT_PATH_LNGS + "/1-618files-original/544withCurrent.root";
+        //writeFileName = ROOT_PATH_LNGS + "/1-618files-calibrated/544withCurrent.root";
+        writeFileName =  ROOT_PATH_SMI + "/15files-calibrated/" + fileName + ".root";
+
+        //rootFileName = ROOT_PATH_LNGS + "/test/1noCurrent.root";
+        //rootFileName = ROOT_PATH_LNGS + "/1noCurrent.root";
+        cout << rootFileName << endl;
+        TFile *froot = TFile::Open(rootFileName, "READ");
+        TTree *tree = (TTree*)froot->Get("tr");
+
+        tree->SetBranchAddress("adc",adcChannel);
+
+
+//        TObjArray *branchArray = tree->GetListOfBranches();
+//        Int_t nbranches = branchArray->GetEntries();
+//        if( nbranches > 17 ){ 
+//
+//            TBranch *calOld = (TBranch*)tree->GetBranch("cal");
+//            TBranch *energyOld = (TBranch*)tree->GetBranch("energy");
+//            branchArray->Remove(calOld);
+//            branchArray->Remove(energyOld);
+//            
+//            //tree->Write("",TObject::kOverwrite);
+//            froot->Write("", TObject::kOverwrite);
+//            tree->Print();
+
+//        }
+
+
+        TBranch *cal = tree->Branch("cal",calibList,"Calibration Parameter[150]/D");
+        TBranch *energy = tree->Branch("energy",energyEv,"Energy in eV[16]/D");
+        Double_t nentries = tree->GetEntries();
+
+        
+
+        for( Int_t i = 0; i < nentries; i++ ){
+            
+            tree->GetEntry(i);
+            
+            binLowE = ((adcChannel[0] - calibList[4]) / calibList[2]) - 1/(2 * calibList[2]);
+            binHighE = ((adcChannel[0] - calibList[4]) / calibList[2]) + 1/(2 * calibList[2]);
+            randN = randG.Rndm();
+            energyEv[0] = binLowE + randN * ( binHighE - binLowE );
+            
+            if( energyEv[0] > MnKa1 ){
+                
+                if(current == 0){
+                    
+                    energyTmp = calcEnergy(adcChannel[0], calibList[2], calibList[4], Ord2CoeffWithout[0]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[2], Ord2CoeffWithout[0]);
+
+                }else{
+                
+                    energyTmp = calcEnergy(adcChannel[0], calibList[2], calibList[4], Ord2CoeffWith[0]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[2], Ord2CoeffWith[0]);
+
+                }
+
+                binLowE = energyTmp - channelWidthTmp/2;
+                binHighE = energyTmp + channelWidthTmp/2;
+                
+                energyEv[0] = binLowE + randN * ( binHighE - binLowE );
+
+            }
+            
+            
+            
+            binLowE = ((adcChannel[2] - calibList[29]) / calibList[27]) - 1/(2 * calibList[27]);
+            binHighE = ((adcChannel[2] - calibList[29]) / calibList[27]) + 1/(2 * calibList[27]);
+            randN = randG.Rndm();
+            energyEv[2] = binLowE + randN * ( binHighE - binLowE );
+            
+            if( (energyEv[2] > MnKa1) && (current == 1) ){ // change here ?? ... for sdd 2 no current the 2nd order parameter == 0 -> linear fit
+
+                if(current == 1){
+                    
+                    //cout << "i am here" << endl;
+                    
+                    energyTmp = calcEnergy(adcChannel[2], calibList[27], calibList[29], Ord2CoeffWith[1]);
+                    channelWidthTmp = calcChannelWidth(energyTmp, calibList[27], Ord2CoeffWith[1]);
+
+                }
+
+                binLowE = energyTmp - channelWidthTmp/2;
+                binHighE = energyTmp + channelWidthTmp/2;
+                
+                energyEv[2] = binLowE + randN * ( binHighE - binLowE );
+                //cout << "energy: " << energyEv[2] << " " << energyTmp << " " << adcChannel[2] << " " << channelWidthTmp << endl;
 
             }
             
@@ -767,66 +1248,70 @@ void PlotBackground(){
     
     Double_t utList[splits];
     Double_t fileNList[splits];
-    Double_t sourceR1[splits], backgR1[splits], highER1[splits], rejR1[splits], cuR1[splits];
-    Double_t sourceR2[splits], backgR2[splits], highER2[splits], rejR2[splits], cuR2[splits];
-    Double_t sourceR3[splits], backgR3[splits], highER3[splits], rejR3[splits], cuR3[splits];
-    Double_t sourceR4[splits], backgR4[splits], highER4[splits], rejR4[splits], cuR4[splits];
-    Double_t sourceR5[splits], backgR5[splits], highER5[splits], rejR5[splits], cuR5[splits];
-    Double_t sourceR6[splits], backgR6[splits], highER6[splits], rejR6[splits], cuR6[splits];
+    Double_t sourceR1[splits], backgR1[splits], rejRCu1[splits], rejRBg1[splits], cuR1[splits];
+    Double_t sourceR2[splits], backgR2[splits], rejRCu2[splits], rejRBg2[splits], cuR2[splits];
+    Double_t sourceR3[splits], backgR3[splits], rejRCu3[splits], rejRBg3[splits], cuR3[splits];
+    Double_t sourceR4[splits], backgR4[splits], rejRCu4[splits], rejRBg4[splits], cuR4[splits];
+    Double_t sourceR5[splits], backgR5[splits], rejRCu5[splits], rejRBg5[splits], cuR5[splits];
+    Double_t sourceR6[splits], backgR6[splits], rejRCu6[splits], rejRBg6[splits], cuR6[splits];
     
     Double_t utListWith[splitsWith];
     Double_t fileNListWith[splitsWith];
-    Double_t sourceR1With[splitsWith], backgR1With[splitsWith], highER1With[splitsWith], rejR1With[splitsWith], cuR1With[splitsWith];
-    Double_t sourceR2With[splitsWith], backgR2With[splitsWith], highER2With[splitsWith], rejR2With[splitsWith], cuR2With[splitsWith];
-    Double_t sourceR3With[splitsWith], backgR3With[splitsWith], highER3With[splitsWith], rejR3With[splitsWith], cuR3With[splitsWith];
-    Double_t sourceR4With[splitsWith], backgR4With[splitsWith], highER4With[splitsWith], rejR4With[splitsWith], cuR4With[splitsWith];
-    Double_t sourceR5With[splitsWith], backgR5With[splitsWith], highER5With[splitsWith], rejR5With[splitsWith], cuR5With[splitsWith];
-    Double_t sourceR6With[splitsWith], backgR6With[splitsWith], highER6With[splitsWith], rejR6With[splitsWith], cuR6With[splitsWith];
+    Double_t sourceR1With[splitsWith], backgR1With[splitsWith], rejRCu1With[splitsWith], rejRBg1With[splitsWith], cuR1With[splitsWith];
+    Double_t sourceR2With[splitsWith], backgR2With[splitsWith], rejRCu2With[splitsWith], rejRBg2With[splitsWith], cuR2With[splitsWith];
+    Double_t sourceR3With[splitsWith], backgR3With[splitsWith], rejRCu3With[splitsWith], rejRBg3With[splitsWith], cuR3With[splitsWith];
+    Double_t sourceR4With[splitsWith], backgR4With[splitsWith], rejRCu4With[splitsWith], rejRBg4With[splitsWith], cuR4With[splitsWith];
+    Double_t sourceR5With[splitsWith], backgR5With[splitsWith], rejRCu5With[splitsWith], rejRBg5With[splitsWith], cuR5With[splitsWith];
+    Double_t sourceR6With[splitsWith], backgR6With[splitsWith], rejRCu6With[splitsWith], rejRBg6With[splitsWith], cuR6With[splitsWith];
     
     for( Int_t fileN = 1; fileN <= splits; fileN++ ){
         
-        bgFile >> sddN >> utList[fileN-1] >> sourceR1[fileN-1] >> backgR1[fileN-1] >> highER1[fileN-1] >> cuR1[fileN-1] >> rejR1[fileN-1];
-        bgFile >> sddN >> utList[fileN-1] >> sourceR2[fileN-1] >> backgR2[fileN-1] >> highER2[fileN-1] >> cuR2[fileN-1] >> rejR2[fileN-1];
-        bgFile >> sddN >> utList[fileN-1] >> sourceR3[fileN-1] >> backgR3[fileN-1] >> highER3[fileN-1] >> cuR3[fileN-1] >> rejR3[fileN-1];
-        bgFile >> sddN >> utList[fileN-1] >> sourceR4[fileN-1] >> backgR4[fileN-1] >> highER4[fileN-1] >> cuR4[fileN-1] >> rejR4[fileN-1];
-        bgFile >> sddN >> utList[fileN-1] >> sourceR5[fileN-1] >> backgR5[fileN-1] >> highER5[fileN-1] >> cuR5[fileN-1] >> rejR5[fileN-1];
-        bgFile >> sddN >> utList[fileN-1] >> sourceR6[fileN-1] >> backgR6[fileN-1] >> highER6[fileN-1] >> cuR6[fileN-1] >> rejR6[fileN-1];
+        bgFile >> sddN >> utList[fileN-1] >> sourceR1[fileN-1] >> backgR1[fileN-1] >> cuR1[fileN-1] >> rejRCu1[fileN-1] >> rejRBg1[fileN-1];
+        bgFile >> sddN >> utList[fileN-1] >> sourceR2[fileN-1] >> backgR2[fileN-1] >> cuR2[fileN-1] >> rejRCu2[fileN-1] >> rejRBg2[fileN-1];
+        bgFile >> sddN >> utList[fileN-1] >> sourceR3[fileN-1] >> backgR3[fileN-1] >> cuR3[fileN-1] >> rejRCu3[fileN-1] >> rejRBg3[fileN-1];
+        bgFile >> sddN >> utList[fileN-1] >> sourceR4[fileN-1] >> backgR4[fileN-1] >> cuR4[fileN-1] >> rejRCu4[fileN-1] >> rejRBg4[fileN-1];
+        bgFile >> sddN >> utList[fileN-1] >> sourceR5[fileN-1] >> backgR5[fileN-1] >> cuR5[fileN-1] >> rejRCu5[fileN-1] >> rejRBg5[fileN-1];
+        bgFile >> sddN >> utList[fileN-1] >> sourceR6[fileN-1] >> backgR6[fileN-1] >> cuR6[fileN-1] >> rejRCu6[fileN-1] >> rejRBg6[fileN-1];
         
         //fileNList[fileN-1] = fileN;
         
-//        cout << backgR1[fileN-1] << " " << utList[fileN-1] << endl;
+        cout << rejRCu2[fileN-1] << " " << utList[fileN-1] << endl;
         
         
     }
     
+    //logfile << sdd << " " << evt_r.ut << " " << rate_source[sdd-1] << " " << rate_bg[sdd-1] << " " << rate_cu[sdd-1] << " " << rejCu[sdd-1] << " " << rejBg[sdd-1] << endl;
+    
+    
     for( Int_t fileN = 1; fileN <= splitsWith; fileN++ ){
         
-        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR1With[fileN-1] >> backgR1With[fileN-1] >> highER1With[fileN-1] >> cuR1With[fileN-1] >> rejR1With[fileN-1];
-        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR2With[fileN-1] >> backgR2With[fileN-1] >> highER2With[fileN-1] >> cuR2With[fileN-1] >> rejR2With[fileN-1];
-        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR3With[fileN-1] >> backgR3With[fileN-1] >> highER3With[fileN-1] >> cuR3With[fileN-1] >> rejR3With[fileN-1];
-        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR4With[fileN-1] >> backgR4With[fileN-1] >> highER4With[fileN-1] >> cuR4With[fileN-1] >> rejR4With[fileN-1];
-        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR5With[fileN-1] >> backgR5With[fileN-1] >> highER5With[fileN-1] >> cuR5With[fileN-1] >> rejR5With[fileN-1];
-        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR6With[fileN-1] >> backgR6With[fileN-1] >> highER6With[fileN-1] >> cuR6With[fileN-1] >> rejR6With[fileN-1];
+        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR1With[fileN-1] >> backgR1With[fileN-1] >> cuR1With[fileN-1] >> rejRCu1With[fileN-1] >> rejRBg1With[fileN-1];
+        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR2With[fileN-1] >> backgR2With[fileN-1] >> cuR2With[fileN-1] >> rejRCu2With[fileN-1] >> rejRBg2With[fileN-1];
+        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR3With[fileN-1] >> backgR3With[fileN-1] >> cuR3With[fileN-1] >> rejRCu3With[fileN-1] >> rejRBg3With[fileN-1];
+        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR4With[fileN-1] >> backgR4With[fileN-1] >> cuR4With[fileN-1] >> rejRCu4With[fileN-1] >> rejRBg4With[fileN-1];
+        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR5With[fileN-1] >> backgR5With[fileN-1] >> cuR5With[fileN-1] >> rejRCu5With[fileN-1] >> rejRBg5With[fileN-1];
+        bgFileWith >> sddN >> utListWith[fileN-1] >> sourceR6With[fileN-1] >> backgR6With[fileN-1] >> cuR6With[fileN-1] >> rejRCu6With[fileN-1] >> rejRBg6With[fileN-1];
         
         //fileNList[fileN-1] = fileN;
         
-        cout << backgR4With[fileN-1] << " " << utListWith[fileN-1] << endl;
+//        cout << rejRCu2[fileN-1] << " " << utListWith[fileN-1] << endl;
         
         
     }
     
     bgFile.close();
     
+    // SDD 1 --------------------------------------------------------------
     
     TCanvas *c1 = new TCanvas("SDD1", "SDD1", 800, 600);
-    c1->Divide(2,2);
+    c1->Divide(3,2);
     
     c1->cd(1);
     TGraph *grb1 = new TGraph(splits,utList,backgR1);
-    grb1->SetTitle("Background 7 - 30 keV");
+    grb1->SetTitle("Background > 10 keV");
     grb1->SetMarkerStyle(20);
     grb1->GetXaxis()->SetLimits(1446000000,1504000000);
-    grb1->GetYaxis()->SetRangeUser(0.0075,0.02);
+    //grb1->GetYaxis()->SetRangeUser(0.0075,0.02);
     grb1->Draw();
 
     
@@ -867,30 +1352,43 @@ void PlotBackground(){
     grs1With->Draw("PL");
     
     c1->cd(4);
-    TGraph *grhe1 = new TGraph(splits,utList,highER1);
-    grhe1->SetTitle("Counts with energy > 30 keV");
-    grhe1->GetXaxis()->SetLimits(1446000000,1504000000);
-    grhe1->GetYaxis()->SetRangeUser(0.01,0.026);
-    grhe1->SetMarkerStyle(20);
-    grhe1->Draw();
+    TGraph *grRejBg1 = new TGraph(splits,utList,rejRBg1);
+    grRejBg1->SetTitle("Rejection Rate of Background > 10 keV");
+    grRejBg1->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grhe1->GetYaxis()->SetRangeUser(0.01,0.026);
+    grRejBg1->SetMarkerStyle(20);
+    grRejBg1->Draw();
 
-    TGraph *grhe1With = new TGraph(splitsWith,utListWith,highER1With);
-    grhe1With->SetMarkerStyle(20);
-    grhe1With->SetMarkerColor(4);
-    grhe1With->Draw("PL");
+    TGraph *grRejBg1With = new TGraph(splitsWith,utListWith,rejRBg1With);
+    grRejBg1With->SetMarkerStyle(20);
+    grRejBg1With->SetMarkerColor(4);
+    grRejBg1With->Draw("PL");
+    
+    c1->cd(5);
+    TGraph *grRejSource1 = new TGraph(splits,utList,rejRCu1);
+    grRejSource1->SetTitle("Rejection Rate of Counts between 7 - 10 keV");
+    grRejSource1->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grhe1->GetYaxis()->SetRangeUser(0.01,0.026);
+    grRejSource1->SetMarkerStyle(20);
+    grRejSource1->Draw();
+
+    TGraph *grRejSource1With = new TGraph(splitsWith,utListWith,rejRCu1With);
+    grRejSource1With->SetMarkerStyle(20);
+    grRejSource1With->SetMarkerColor(4);
+    grRejSource1With->Draw("PL");
     
     
     // SDD 2 ------------------------------------------
     
     TCanvas *c2 = new TCanvas("SDD2", "SDD2", 800, 600);
-    c2->Divide(2,2);
+    c2->Divide(3,2);
     
     c2->cd(1);
     TGraph *grb2 = new TGraph(splits,utList,backgR2);
-    grb2->SetTitle("Background 7 - 30 keV");
+    grb2->SetTitle("Background > 10 keV");
     grb2->SetMarkerStyle(20);
     grb2->GetXaxis()->SetLimits(1446000000,1504000000);
-    grb2->GetYaxis()->SetRangeUser(0.0075,0.02);
+    //grb2->GetYaxis()->SetRangeUser(0.0075,0.02);
     grb2->Draw();
 
     
@@ -931,29 +1429,44 @@ void PlotBackground(){
     grs2With->Draw("PL");
     
     c2->cd(4);
-    TGraph *grhe2 = new TGraph(splits,utList,highER2);
-    grhe2->SetTitle("Counts with energy > 30 keV");
-    grhe2->GetXaxis()->SetLimits(1446000000,1504000000);
-    grhe2->GetYaxis()->SetRangeUser(0.01,0.026);
-    grhe2->SetMarkerStyle(20);
-    grhe2->Draw();
+    TGraph *grRejBg2 = new TGraph(splits,utList,rejRBg2);
+    grRejBg2->SetTitle("Rejection Rate of Background > 10 keV");
+    grRejBg2->GetXaxis()->SetLimits(1446000000,1504000000);
+    grRejBg2->GetYaxis()->SetRangeUser(0.,0.05);
+    grRejBg2->SetMarkerStyle(20);
+    grRejBg2->Draw();
 
-    TGraph *grhe2With = new TGraph(splitsWith,utListWith,highER2With);
-    grhe2With->SetMarkerStyle(20);
-    grhe2With->SetMarkerColor(4);
-    grhe2With->Draw("PL");
-//    
-//    // SDD 3 ------------------------------------------
-//    
+    TGraph *grRejBg2With = new TGraph(splitsWith,utListWith,rejRBg2With);
+    grRejBg2With->SetMarkerStyle(20);
+    grRejBg2With->SetMarkerColor(4);
+    grRejBg2With->Draw("PL");
+    
+    c2->cd(5);
+    TGraph *grRejSource2 = new TGraph(splits,utList,rejRCu2);
+    grRejSource2->SetTitle("Rejection Rate of Counts between 7 - 10 keV");
+    grRejSource2->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grhe1->GetYaxis()->SetRangeUser(0.01,0.026);
+    grRejSource2->SetMarkerStyle(20);
+    grRejSource2->Draw();
+
+    TGraph *grRejSource2With = new TGraph(splitsWith,utListWith,rejRCu2With);
+    grRejSource2With->SetMarkerStyle(20);
+    grRejSource2With->SetMarkerColor(4);
+    grRejSource2With->Draw("PL");
+    
+
+    
+    // SDD 3 ------------------------------------------
+    
     TCanvas *c3 = new TCanvas("SDD3", "SDD3", 800, 600);
-    c3->Divide(2,2);
+    c3->Divide(3,2);
     
     c3->cd(1);
     TGraph *grb3 = new TGraph(splits,utList,backgR3);
-    grb3->SetTitle("Background 7 - 30 keV");
+    grb3->SetTitle("Background > 10 keV");
     grb3->SetMarkerStyle(20);
     grb3->GetXaxis()->SetLimits(1446000000,1504000000);
-    grb3->GetYaxis()->SetRangeUser(0.0075,0.02);
+    //grb3->GetYaxis()->SetRangeUser(0.0075,0.02);
     grb3->Draw();
 
     
@@ -994,29 +1507,44 @@ void PlotBackground(){
     grs3With->Draw("PL");
     
     c3->cd(4);
-    TGraph *grhe3 = new TGraph(splits,utList,highER3);
-    grhe3->SetTitle("Counts with energy > 30 keV");
-    grhe3->GetXaxis()->SetLimits(1446000000,1504000000);
-    grhe3->GetYaxis()->SetRangeUser(0.01,0.026);
-    grhe3->SetMarkerStyle(20);
-    grhe3->Draw();
+    TGraph *grRejBg3 = new TGraph(splits,utList,rejRBg3);
+    grRejBg3->SetTitle("Rejection Rate of Background > 7 keV");
+    grRejBg3->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grhe1->GetYaxis()->SetRangeUser(0.01,0.026);
+    grRejBg3->SetMarkerStyle(20);
+    grRejBg3->Draw();
 
-    TGraph *grhe3With = new TGraph(splitsWith,utListWith,highER3With);
-    grhe3With->SetMarkerStyle(20);
-    grhe3With->SetMarkerColor(4);
-    grhe3With->Draw("PL");
+    TGraph *grRejBg3With = new TGraph(splitsWith,utListWith,rejRBg3With);
+    grRejBg3With->SetMarkerStyle(20);
+    grRejBg3With->SetMarkerColor(4);
+    grRejBg3With->Draw("PL");
+    
+    c3->cd(5);
+    TGraph *grRejSource3 = new TGraph(splits,utList,rejRCu3);
+    grRejSource3->SetTitle("Rejection Rate of Source Counts");
+    grRejSource3->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grhe1->GetYaxis()->SetRangeUser(0.01,0.026);
+    grRejSource3->SetMarkerStyle(20);
+    grRejSource3->Draw();
+
+    TGraph *grRejSource3With = new TGraph(splitsWith,utListWith,rejRCu3With);
+    grRejSource3With->SetMarkerStyle(20);
+    grRejSource3With->SetMarkerColor(4);
+    grRejSource3With->Draw("PL");
+    
+
 //    
 //    // SDD 4 ------------------------------------------
 //    
     TCanvas *c4 = new TCanvas("SDD4", "SDD4", 800, 600);
-    c4->Divide(2,2);
+    c4->Divide(3,2);
     
     c4->cd(1);
     TGraph *grb4 = new TGraph(splits,utList,backgR4);
-    grb4->SetTitle("Background 7 - 30 keV");
+    grb4->SetTitle("Background > 10 keV");
     grb4->SetMarkerStyle(20);
     grb4->GetXaxis()->SetLimits(1446000000,1504000000);
-    grb4->GetYaxis()->SetRangeUser(0.005,0.0075);
+   // grb4->GetYaxis()->SetRangeUser(0.005,0.0075);
     grb4->Draw();
 
     
@@ -1057,29 +1585,43 @@ void PlotBackground(){
     grs4With->Draw("PL");
     
     c4->cd(4);
-    TGraph *grhe4 = new TGraph(splits,utList,highER4);
-    grhe4->SetTitle("Counts with energy > 30 keV");
-    grhe4->GetXaxis()->SetLimits(1446000000,1504000000);
-    grhe4->GetYaxis()->SetRangeUser(0.01,0.026);
-    grhe4->SetMarkerStyle(20);
-    grhe4->Draw();
+    TGraph *grRejBg4 = new TGraph(splits,utList,rejRBg4);
+    grRejBg4->SetTitle("Rejection Rate of Background > 10 keV");
+    grRejBg4->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grhe1->GetYaxis()->SetRangeUser(0.01,0.026);
+    grRejBg4->SetMarkerStyle(20);
+    grRejBg4->Draw();
 
-    TGraph *grhe4With = new TGraph(splitsWith,utListWith,highER4With);
-    grhe4With->SetMarkerStyle(20);
-    grhe4With->SetMarkerColor(4);
-    grhe4With->Draw("PL");
-//    
+    TGraph *grRejBg4With = new TGraph(splitsWith,utListWith,rejRBg4With);
+    grRejBg4With->SetMarkerStyle(20);
+    grRejBg4With->SetMarkerColor(4);
+    grRejBg4With->Draw("PL");
+    
+    c4->cd(5);
+    TGraph *grRejSource4 = new TGraph(splits,utList,rejRCu4);
+    grRejSource4->SetTitle("Rejection Rate of Counts between 7 - 10 keV");
+    grRejSource4->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grhe1->GetYaxis()->SetRangeUser(0.01,0.026);
+    grRejSource4->SetMarkerStyle(20);
+    grRejSource4->Draw();
+
+    TGraph *grRejSource4With = new TGraph(splitsWith,utListWith,rejRCu4With);
+    grRejSource4With->SetMarkerStyle(20);
+    grRejSource4With->SetMarkerColor(4);
+    grRejSource4With->Draw("PL");
+    
+
 //    // SDD 5 ------------------------------------------
 //    
     TCanvas *c5 = new TCanvas("SDD5", "SDD5", 800, 600);
-    c5->Divide(2,2);
+    c5->Divide(3,2);
     
     c5->cd(1);
     TGraph *grb5 = new TGraph(splits,utList,backgR5);
-    grb5->SetTitle("Background 7 - 30 keV");
+    grb5->SetTitle("Background > 10 keV");
     grb5->SetMarkerStyle(20);
     grb5->GetXaxis()->SetLimits(1446000000,1504000000);
-    grb5->GetYaxis()->SetRangeUser(0.0075,0.02);
+    //grb5->GetYaxis()->SetRangeUser(0.0075,0.02);
     grb5->Draw();
 
     
@@ -1120,29 +1662,44 @@ void PlotBackground(){
     grs5With->Draw("PL");
     
     c5->cd(4);
-    TGraph *grhe5 = new TGraph(splits,utList,highER5);
-    grhe5->SetTitle("Counts with energy > 30 keV");
-    grhe5->GetXaxis()->SetLimits(1446000000,1504000000);
-    //grhe5->GetYaxis()->SetRangeUser(0.05,0.026);
-    grhe5->SetMarkerStyle(20);
-    grhe5->Draw();
+    TGraph *grRejBg5 = new TGraph(splits,utList,rejRBg5);
+    grRejBg5->SetTitle("Rejection Rate of Background > 10 keV");
+    grRejBg5->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grhe1->GetYaxis()->SetRangeUser(0.01,0.026);
+    grRejBg5->SetMarkerStyle(20);
+    grRejBg5->Draw();
 
-    TGraph *grhe5With = new TGraph(splitsWith,utListWith,highER5With);
-    grhe5With->SetMarkerStyle(20);
-    grhe5With->SetMarkerColor(4);
-    grhe5With->Draw("PL");
+    TGraph *grRejBg5With = new TGraph(splitsWith,utListWith,rejRBg5With);
+    grRejBg5With->SetMarkerStyle(20);
+    grRejBg5With->SetMarkerColor(4);
+    grRejBg5With->Draw("PL");
+    
+    c5->cd(5);
+    TGraph *grRejSource5 = new TGraph(splits,utList,rejRCu5);
+    grRejSource5->SetTitle("Rejection Rate of Counts between 7 - 10 keV");
+    grRejSource5->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grhe1->GetYaxis()->SetRangeUser(0.01,0.026);
+    grRejSource5->SetMarkerStyle(20);
+    grRejSource5->Draw();
+
+    TGraph *grRejSource5With = new TGraph(splitsWith,utListWith,rejRCu5With);
+    grRejSource5With->SetMarkerStyle(20);
+    grRejSource5With->SetMarkerColor(4);
+    grRejSource5With->Draw("PL");
+    
+
 //    
 //    // SDD 6 ------------------------------------------
 //    
     TCanvas *c6 = new TCanvas("SDD6", "SDD6", 800, 600);
-    c6->Divide(2,2);
+    c6->Divide(3,2);
     
     c6->cd(1);
     TGraph *grb6 = new TGraph(splits,utList,backgR6);
-    grb6->SetTitle("Background 7 - 30 keV");
+    grb6->SetTitle("Background > 10 keV");
     grb6->SetMarkerStyle(20);
     grb6->GetXaxis()->SetLimits(1446000000,1504000000);
-    grb6->GetYaxis()->SetRangeUser(0.0075,0.02);
+    //grb6->GetYaxis()->SetRangeUser(0.0075,0.02);
     grb6->Draw();
 
     
@@ -1162,7 +1719,7 @@ void PlotBackground(){
     grcu6->SetTitle("Background 7 - 10 keV");
     grcu6->SetMarkerStyle(20);
     grcu6->GetXaxis()->SetLimits(1446000000,1504000000);
-    grcu6->GetYaxis()->SetRangeUser(0.0015,0.003);
+    //grcu6->GetYaxis()->SetRangeUser(0.0015,0.003);
     grcu6->Draw();
 
     TGraph *grcu6With = new TGraph(splitsWith,utListWith,cuR6With);
@@ -1183,17 +1740,30 @@ void PlotBackground(){
     grs6With->Draw("PL");
     
     c6->cd(4);
-    TGraph *grhe6 = new TGraph(splits,utList,highER6);
-    grhe6->SetTitle("Counts with energy > 30 keV");
-    grhe6->GetXaxis()->SetLimits(1446000000,1504000000);
-    //grhe6->GetYaxis()->SetRangeUser(0.06,0.026);
-    grhe6->SetMarkerStyle(20);
-    grhe6->Draw();
+    TGraph *grRejBg6 = new TGraph(splits,utList,rejRBg6);
+    grRejBg6->SetTitle("Rejection Rate of Background > 10 keV");
+    grRejBg6->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grhe1->GetYaxis()->SetRangeUser(0.01,0.026);
+    grRejBg6->SetMarkerStyle(20);
+    grRejBg6->Draw();
 
-    TGraph *grhe6With = new TGraph(splitsWith,utListWith,highER6With);
-    grhe6With->SetMarkerStyle(20);
-    grhe6With->SetMarkerColor(4);
-    grhe6With->Draw("PL");
+    TGraph *grRejBg6With = new TGraph(splitsWith,utListWith,rejRBg6With);
+    grRejBg6With->SetMarkerStyle(20);
+    grRejBg6With->SetMarkerColor(4);
+    grRejBg6With->Draw("PL");
+    
+    c6->cd(5);
+    TGraph *grRejSource6 = new TGraph(splits,utList,rejRCu6);
+    grRejSource6->SetTitle("Rejection Rate of Counts between 7 - 10 keV");
+    grRejSource6->GetXaxis()->SetLimits(1446000000,1504000000);
+    //grhe1->GetYaxis()->SetRangeUser(0.01,0.026);
+    grRejSource6->SetMarkerStyle(20);
+    grRejSource6->Draw();
+
+    TGraph *grRejSource6With = new TGraph(splitsWith,utListWith,rejRCu6With);
+    grRejSource6With->SetMarkerStyle(20);
+    grRejSource6With->SetMarkerColor(4);
+    grRejSource6With->Draw("PL");
     
     
     
@@ -1323,20 +1893,20 @@ void CheckBackground( TString rootfile,  TString place, Int_t divider, Int_t par
     Int_t counter_source[6] = {0};
     Double_t rate_source[6] = {0};
     
-    Int_t lbound_bg = 7000;
-    Int_t ubound_bg = 20000;
+    Int_t lbound_bg = 10000;
+    Int_t ubound_bg = 70000;
     Int_t counter_bg[6] = {0};
     Double_t rate_bg[6] = {0};
-    
-    Int_t lbound_he = 20000;
-    Int_t ubound_he = 70000;
-    Int_t counter_he[6] = {0};
-    Double_t rate_he[6] = {0};
     
     Int_t lbound_cu = 7000;
     Int_t ubound_cu = 10000;
     Int_t counter_cu[6] = {0};
     Double_t rate_cu[6] = {0};
+    
+    Int_t counter_rejCu[6] = {0};
+    Int_t counter_rejBg[6] = {0};
+    Double_t rejCu[6] = {0};
+    Double_t rejBg[6] = {0};
     
     EventStruct  evt_r;
 
@@ -1354,7 +1924,6 @@ void CheckBackground( TString rootfile,  TString place, Int_t divider, Int_t par
     
     if( constFracTime == 1 ) { divider = (int) hours_rootfile / hours_target; }
     
-    sec_duration = GetRunTime(rootfile, place, divider, part, complete);
 
     
 //    for( sdd = 1; sdd < 7; sdd++  ){
@@ -1398,6 +1967,8 @@ void CheckBackground( TString rootfile,  TString place, Int_t divider, Int_t par
   
     }
     
+    sec_duration = GetRunTimeIndices(rootfile, place, lbound_ind, ubound_ind);
+    
     cout << " lower event index: " << lbound_ind << " upper event index:  " << ubound_ind << endl;
     
     for(Int_t i = lbound_ind; i <= ubound_ind; i++){
@@ -1407,8 +1978,8 @@ void CheckBackground( TString rootfile,  TString place, Int_t divider, Int_t par
         utEvent->GetEntry(i);
         energyEvent->GetEvent(i);
         
-        if( evt_r.trgid > 2 ){ coinc_counter += 1; }
-        if( evt_r.trgid == 1 ){ sddEventCount += 1; }
+        //if( evt_r.trgid > 2 ){ coinc_counter += 1; }
+        //if( evt_r.trgid == 1 ){ sddEventCount += 1; }
         
         for( sdd = 1; sdd < 7; sdd++  ){
             
@@ -1422,15 +1993,19 @@ void CheckBackground( TString rootfile,  TString place, Int_t divider, Int_t par
             
             if( energyList[adc_channel] > lbound_source &&  energyList[adc_channel] < ubound_source){ counter_source[sdd-1] += 1; }
             if( energyList[adc_channel] > lbound_bg &&  energyList[adc_channel] < ubound_bg)        { counter_bg[sdd-1] += 1;     }
-            if( energyList[adc_channel] > lbound_he &&  energyList[adc_channel] < ubound_he)        { counter_he[sdd-1] += 1;     }
             if( energyList[adc_channel] > lbound_cu &&  energyList[adc_channel] < ubound_cu)        { counter_cu[sdd-1] += 1;     }
+            
+            if( energyList[adc_channel] > lbound_cu &&  energyList[adc_channel] < ubound_cu && evt_r.trgid == 3)        { counter_rejCu[sdd-1] += 1;     }
+            if( energyList[adc_channel] > lbound_bg &&  energyList[adc_channel] < ubound_bg && evt_r.trgid == 3)        { counter_rejBg[sdd-1] += 1;     }
         
         }
         
     }
     
-    cout << "coinc counter: " << coinc_counter << " sdd Event count: " << sddEventCount << endl;
-    coinc_frac = (float)coinc_counter / (float)(sddEventCount);
+    //cout << "coinc counter: " << coinc_counter << " sdd Event count: " << sddEventCount << endl;
+    //coinc_frac = (float)coinc_counter / (float)(sddEventCount);
+    
+    
     
     
 //    if( coinc_frac > 0.025 ){ 
@@ -1486,12 +2061,14 @@ void CheckBackground( TString rootfile,  TString place, Int_t divider, Int_t par
         
         rate_source[sdd-1] = (float)counter_source[sdd-1] / (float)sec_duration;
         rate_bg[sdd-1] = (float)counter_bg[sdd-1] / (float)sec_duration;
-        rate_he[sdd-1] = (float)counter_he[sdd-1] / (float)sec_duration;
         rate_cu[sdd-1] = (float)counter_cu[sdd-1] / (float)sec_duration;
         
+        rejCu[sdd-1] = (float)counter_rejCu[sdd-1]/counter_cu[sdd-1];
+        rejBg[sdd-1] = (float)counter_rejBg[sdd-1]/counter_bg[sdd-1];
         
         
-        logfile << sdd << " " << evt_r.ut << " " << rate_source[sdd-1] << " " << rate_bg[sdd-1] << " " << rate_he[sdd-1] << " " << rate_cu[sdd-1] << " " << coinc_frac << endl;
+        
+        logfile << sdd << " " << evt_r.ut << " " << rate_source[sdd-1] << " " << rate_bg[sdd-1] << " " << rate_cu[sdd-1] << " " << rejCu[sdd-1] << " " << rejBg[sdd-1] << endl;
         
         
     }

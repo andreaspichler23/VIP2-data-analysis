@@ -29,7 +29,7 @@
 #include  "common.h"
 #include  "PhaseOneScintiConnectionTable.h"
 #include  "PhaseOneSDDConnectionTable.h"
-#include  "ReadFullDaqBinData.h" 
+#include  "ReadFullDaqBinData_SMI.h" 
 //#include  "SDDcalib.h"
 //#include  "qdc_ana.C"
 
@@ -44,7 +44,7 @@ void MakeTree( TString filelist, TString rootfilename, TString place )
     Int_t  read_status = - 999;
     Int_t root_file_event_counter = 0;
 
-    Int_t  qdc_th[NScinti] = { 700 };
+    //Int_t  qdc_th[NScinti] = { 700 };
     
     //TObjString bin_file;
 
@@ -98,7 +98,7 @@ void MakeTree( TString filelist, TString rootfilename, TString place )
     //tr->Branch("hr",     &evt.hr,     "High Rate/S");
     tr->Branch("clk",    &evt.clk,    "LV ms clock/I");
     tr->Branch("slow",   evt.slow,    "Slow Parameter[19]/D");
-    tr->Branch("tdc_dig",evt.tdc_dig, "TDC Digtal array[9]/S");
+    tr->Branch("tdc_dig",evt.tdc_dig_smi, "TDC Digtal array[13]/S");
     tr->Branch("qdc_dig",evt.qdc_dig, "QDC Digtal array[37]/S");
     tr->Branch("adc_dig",evt.adc_dig, "ADC Digtal array[8]/S");
     //tr->Branch("binFile",&bin_file);
@@ -139,7 +139,7 @@ void MakeTree( TString filelist, TString rootfilename, TString place )
         sscanf( listline, "%s\n", file_name ); // stores listline to file_name -> necessary bc listline contains newlines
         cout << file_name << endl;
         
-        read_status = ReadData( file_name, rootfile, qdc_th, place, root_file_event_counter);
+        read_status = ReadData( file_name, rootfile, place, root_file_event_counter);
 
         cout << "Return value : " << read_status << endl << endl;
     }
@@ -153,6 +153,7 @@ void MakeTree( TString filelist, TString rootfilename, TString place )
 
 void MakeTreeLoop( TString filelistFile, TString place){
     
+    //MakeTreeLoop("ListofFilelists_SMI.txt","smi")
     
     FILE  *flist;
     Int_t size = place.Sizeof();
@@ -199,7 +200,7 @@ void MakeTreeLoop( TString filelistFile, TString place){
     
 }
 
-Int_t ReadData( TString datafilename, TString root_file, Int_t qdc_th[NScinti], TString place, int& root_file_event_counter )
+Int_t ReadData( TString datafilename, TString root_file, TString place, int& root_file_event_counter )
 {
 
     
@@ -301,7 +302,7 @@ Int_t ReadData( TString datafilename, TString root_file, Int_t qdc_th[NScinti], 
     trgidEvent ->SetAddress(&evt_r.trgid);
     //hrEvent    ->SetAddress(&evt_r.hr);
     clkEvent   ->SetAddress(&evt_r.clk);
-    tdc_digEvent  ->SetAddress(evt_r.tdc_dig);
+    tdc_digEvent  ->SetAddress(evt_r.tdc_dig_smi);
     qdc_digEvent  ->SetAddress(evt_r.qdc_dig);
     adc_digEvent  ->SetAddress(evt_r.adc_dig);
     //binFileEvent ->SetAddress(&bin_file);
@@ -434,39 +435,62 @@ Int_t ReadData( TString datafilename, TString root_file, Int_t qdc_th[NScinti], 
         //TDC; only using bottom and top
           
         ref_channel_val = evt_r.tdc[14];
-        evt_r.tdc_dig[8] = 0; // tdc multiplicity
+        evt_r.tdc_dig_smi[8] = 0; // tdc multiplicity
         
-        if( evt_r.tdc[4] > -200 && evt_r.tdc[4] < 0){ evt_r.tdc_dig[0] = 0; } // top outer tdc
-        else if( evt_r.tdc[4] > 0 && evt_r.tdc[4] < 7001 ){ evt_r.tdc_dig[0] = 1; evt_r.tdc_dig[8] = evt_r.tdc_dig[8] + 1;}
-        else if( evt_r.tdc[4] > 7000 && evt_r.tdc[4] < 16000){ evt_r.tdc_dig[0] = 2; evt_r.tdc_dig[8] = evt_r.tdc_dig[8] + 1;}
-        else{ evt_r.tdc_dig[0] = -1; }
+        if( evt_r.tdc[4] > -200 && evt_r.tdc[4] < 0){ evt_r.tdc_dig_smi[0] = 0; } // top outer tdc
+        else if( evt_r.tdc[4] > 0 && evt_r.tdc[4] < 6001 ){ evt_r.tdc_dig_smi[0] = 1; evt_r.tdc_dig_smi[8] = evt_r.tdc_dig_smi[8] + 1;}
+        else if( evt_r.tdc[4] > 6000 && evt_r.tdc[4] < 16000){ evt_r.tdc_dig_smi[0] = 2; evt_r.tdc_dig_smi[8] = evt_r.tdc_dig_smi[8] + 1;}
+        else{ evt_r.tdc_dig_smi[0] = -1; }
 
-        if( evt_r.tdc[5] > -200 && evt_r.tdc[5] < 0){ evt_r.tdc_dig[1] = 0; } // top inner tdc
-        else if( evt_r.tdc[5] > 0 && evt_r.tdc[5] < 7001 ){ evt_r.tdc_dig[1] = 1; evt_r.tdc_dig[8] = evt_r.tdc_dig[8] + 1;}
-        else if( evt_r.tdc[5] > 7000 && evt_r.tdc[5] < 16000){ evt_r.tdc_dig[1] = 2; evt_r.tdc_dig[8] = evt_r.tdc_dig[8] + 1;}
-        else{ evt_r.tdc_dig[1] = -1; }
+        if( evt_r.tdc[5] > -200 && evt_r.tdc[5] < 0){ evt_r.tdc_dig_smi[1] = 0; } // top inner tdc
+        else if( evt_r.tdc[5] > 0 && evt_r.tdc[5] < 6001 ){ evt_r.tdc_dig_smi[1] = 1; evt_r.tdc_dig_smi[8] = evt_r.tdc_dig_smi[8] + 1;}
+        else if( evt_r.tdc[5] > 6000 && evt_r.tdc[5] < 16000){ evt_r.tdc_dig_smi[1] = 2; evt_r.tdc_dig_smi[8] = evt_r.tdc_dig_smi[8] + 1;}
+        else{ evt_r.tdc_dig_smi[1] = -1; }
         
-        if( evt_r.tdc[1] > -200 && evt_r.tdc[1] < 0){ evt_r.tdc_dig[2] = 0; } // bottom inner tdc
-        else if( evt_r.tdc[1] > 0 && evt_r.tdc[1] < 7001 ){ evt_r.tdc_dig[2] = 1; evt_r.tdc_dig[8] = evt_r.tdc_dig[8] + 1;}
-        else if( evt_r.tdc[1] > 7000 && evt_r.tdc[1] < 16000){ evt_r.tdc_dig[2] = 2; evt_r.tdc_dig[8] = evt_r.tdc_dig[8] + 1;}
-        else{ evt_r.tdc_dig[2] = -1; }
+        if( evt_r.tdc[1] > -200 && evt_r.tdc[1] < 0){ evt_r.tdc_dig_smi[2] = 0; } // bottom inner tdc
+        else if( evt_r.tdc[1] > 0 && evt_r.tdc[1] < 6001 ){ evt_r.tdc_dig_smi[2] = 1; evt_r.tdc_dig_smi[8] = evt_r.tdc_dig_smi[8] + 1;}
+        else if( evt_r.tdc[1] > 6000 && evt_r.tdc[1] < 16000){ evt_r.tdc_dig_smi[2] = 2; evt_r.tdc_dig_smi[8] = evt_r.tdc_dig_smi[8] + 1;}
+        else{ evt_r.tdc_dig_smi[2] = -1; }
         
-        if( evt_r.tdc[8] > -200 && evt_r.tdc[8] < 0){ evt_r.tdc_dig[3] = 0; } // bottom outer tdc
-        else if( evt_r.tdc[8] > 0 && evt_r.tdc[8] < 7001 ){ evt_r.tdc_dig[3] = 1; evt_r.tdc_dig[8] = evt_r.tdc_dig[8] + 1;}
-        else if( evt_r.tdc[8] > 7000 && evt_r.tdc[8] < 16000){ evt_r.tdc_dig[3] = 2;evt_r.tdc_dig[8] = evt_r.tdc_dig[8] + 1; }
-        else{ evt_r.tdc_dig[3] = -1; }   
+        if( evt_r.tdc[7] > -200 && evt_r.tdc[7] < 0){ evt_r.tdc_dig_smi[3] = 0; } // bottom outer tdc
+        else if( evt_r.tdc[7] > 0 && evt_r.tdc[7] < 6001 ){ evt_r.tdc_dig_smi[3] = 1; evt_r.tdc_dig_smi[8] = evt_r.tdc_dig_smi[8] + 1;}
+        else if( evt_r.tdc[7] > 6000 && evt_r.tdc[7] < 16000){ evt_r.tdc_dig_smi[3] = 2;evt_r.tdc_dig_smi[8] = evt_r.tdc_dig_smi[8] + 1; }
+        else{ evt_r.tdc_dig_smi[3] = -1; }   
         
-        if( evt_r.tdc_dig[0] > 0 || evt_r.tdc_dig[3] > 0){ evt_r.tdc_dig[4] = 1; } // tdc outer flag
-        else{ evt_r.tdc_dig[4] = 0; }
+        
+        
+        
+        if( evt_r.tdc[0] > -200 && evt_r.tdc[0] < 0){ evt_r.tdc_dig_smi[9] = 0; } // left outer tdc
+        else if( evt_r.tdc[0] > 0 && evt_r.tdc[0] < 6001 ){ evt_r.tdc_dig_smi[9] = 1; evt_r.tdc_dig_smi[8] = evt_r.tdc_dig_smi[8] + 1;}
+        else if( evt_r.tdc[0] > 6000 && evt_r.tdc[0] < 16000){ evt_r.tdc_dig_smi[9] = 2; evt_r.tdc_dig_smi[8] = evt_r.tdc_dig_smi[8] + 1;}
+        else{ evt_r.tdc_dig_smi[9] = -1; }
+
+        if( evt_r.tdc[3] > -200 && evt_r.tdc[3] < 0){ evt_r.tdc_dig_smi[10] = 0; } // left inner tdc
+        else if( evt_r.tdc[3] > 0 && evt_r.tdc[3] < 6001 ){ evt_r.tdc_dig_smi[10] = 1; evt_r.tdc_dig_smi[8] = evt_r.tdc_dig_smi[8] + 1;}
+        else if( evt_r.tdc[3] > 6000 && evt_r.tdc[3] < 16000){ evt_r.tdc_dig_smi[10] = 2; evt_r.tdc_dig_smi[8] = evt_r.tdc_dig_smi[8] + 1;}
+        else{ evt_r.tdc_dig_smi[10] = -1; }
+        
+        if( evt_r.tdc[2] > -200 && evt_r.tdc[2] < 0){ evt_r.tdc_dig_smi[11] = 0; } // right inner tdc
+        else if( evt_r.tdc[2] > 0 && evt_r.tdc[2] < 6001 ){ evt_r.tdc_dig_smi[11] = 1; evt_r.tdc_dig_smi[8] = evt_r.tdc_dig_smi[8] + 1;}
+        else if( evt_r.tdc[2] > 6000 && evt_r.tdc[2] < 16000){ evt_r.tdc_dig_smi[11] = 2; evt_r.tdc_dig_smi[8] = evt_r.tdc_dig_smi[8] + 1;}
+        else{ evt_r.tdc_dig_smi[11] = -1; }
+        
+        if( evt_r.tdc[6] > -200 && evt_r.tdc[6] < 0){ evt_r.tdc_dig_smi[12] = 0; } // right outer tdc
+        else if( evt_r.tdc[6] > 0 && evt_r.tdc[6] < 6001 ){ evt_r.tdc_dig_smi[12] = 1; evt_r.tdc_dig_smi[8] = evt_r.tdc_dig_smi[8] + 1;}
+        else if( evt_r.tdc[6] > 6000 && evt_r.tdc[6] < 16000){ evt_r.tdc_dig_smi[12] = 2;evt_r.tdc_dig_smi[8] = evt_r.tdc_dig_smi[8] + 1; }
+        else{ evt_r.tdc_dig_smi[12] = -1; } 
+        
+        if( evt_r.tdc_dig_smi[0] > 0 || evt_r.tdc_dig_smi[3] > 0 ||  evt_r.tdc_dig_smi[9] > 0 ||  evt_r.tdc_dig_smi[12] > 0 ){ evt_r.tdc_dig_smi[4] = 1; } // tdc outer flag
+        else{ evt_r.tdc_dig_smi[4] = 0; }
        
-        if( evt_r.tdc_dig[1] > 0 || evt_r.tdc_dig[2] > 0){ evt_r.tdc_dig[5] = 1; } // tdc inner flag
-        else{ evt_r.tdc_dig[5] = 0; }
+        if( evt_r.tdc_dig_smi[1] > 0 || evt_r.tdc_dig_smi[2] > 0 ||  evt_r.tdc_dig_smi[10] > 0 ||  evt_r.tdc_dig_smi[11] > 0 ){ evt_r.tdc_dig_smi[5] = 1; } // tdc inner flag
+        else{ evt_r.tdc_dig_smi[5] = 0; }
         
-        if( evt_r.tdc_dig[4] > 0 || evt_r.tdc_dig[5] > 0 ){ evt_r.tdc_dig[6] = 1; } // outer OR inner
-        else( evt_r.tdc_dig[6] = 0 );
+        if( evt_r.tdc_dig_smi[4] > 0 || evt_r.tdc_dig_smi[5] > 0 ){ evt_r.tdc_dig_smi[6] = 1; } // outer OR inner
+        else( evt_r.tdc_dig_smi[6] = 0 );
         
-        if( evt_r.tdc_dig[4] > 0 && evt_r.tdc_dig[5] > 0 ){ evt_r.tdc_dig[7] = 1; } // outer AND inner
-        else( evt_r.tdc_dig[7] = 0 );
+        if( evt_r.tdc_dig_smi[4] > 0 && evt_r.tdc_dig_smi[5] > 0 ){ evt_r.tdc_dig_smi[7] = 1; } // outer AND inner
+        else( evt_r.tdc_dig_smi[7] = 0 );
         
         // QDC 
         evt_r.qdc_dig[32] = 0; // qdc outer flag
@@ -477,7 +501,7 @@ Int_t ReadData( TString datafilename, TString root_file, Int_t qdc_th[NScinti], 
         
         for( Int_t i = 0 ; i < 24 ; i++ ){
             //if( i == 3 ){ continue; }
-            if( evt_r.qdc[i] > QdcCuts_100nsGate[i] ){ 
+            if( evt_r.qdc[i] > QdcCuts[i] ){ // QdcCuts is the smi thresholds
                 
                 evt_r.qdc_dig[i] = 1;
                 layer = Qdc2Layer[i];
@@ -521,10 +545,10 @@ Int_t ReadData( TString datafilename, TString root_file, Int_t qdc_th[NScinti], 
         
         evt_r.trgid = -1;
         
-        if( evt_r.tdc[12] > 12000 && evt_r.tdc_dig[6] == 0 && evt_r.tdc[13] < 0 ){ evt_r.trgid = 1; } // SDD only
-        else if( evt_r.tdc[12] < 0 && (evt_r.tdc_dig[6] == 1 || evt_r.tdc[13] > 0) ){ evt_r.trgid = 2; } // scintillator only
-        else if( evt_r.tdc[12] > 12000 && (evt_r.tdc_dig[7] == 1 || evt_r.tdc[13] > 0 ) ){ evt_r.trgid = 3; } // sdd + inner AND outer tdc layer
-        else if( evt_r.tdc[12] > 12000 && evt_r.tdc_dig[6] == 1 ){ evt_r.trgid = 4; } // sdd + 1 scintillator layer
+        if( evt_r.tdc[12] > 12000 && evt_r.tdc_dig_smi[6] == 0 && evt_r.tdc[13] < 0 ){ evt_r.trgid = 1; } // SDD only
+        else if( evt_r.tdc[12] < 0 && (evt_r.tdc_dig_smi[6] == 1 || evt_r.tdc[13] > 0) ){ evt_r.trgid = 2; } // scintillator only
+        else if( evt_r.tdc[12] > 12000 && (evt_r.tdc_dig_smi[7] == 1 || evt_r.tdc[13] > 0 ) ){ evt_r.trgid = 3; } // sdd + inner AND outer tdc layer
+        else if( evt_r.tdc[12] > 12000 && evt_r.tdc_dig_smi[6] == 1 ){ evt_r.trgid = 4; } // sdd + 1 scintillator layer
         else if( evt_r.tdc[12] < 0 && evt_r.tdc[13] < 0 ){ evt_r.trgid = 0; } // no trigger
 
         // Histograms for TDC 

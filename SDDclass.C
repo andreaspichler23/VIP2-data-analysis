@@ -169,7 +169,7 @@ bool SDDclass::SearchPeak()
     cout << "p1 : " << pX[0] << " p2 : " << pX[1] << " p3 : " << pX[2] << " p4 : " << pX[3] << " p5 : " << pX[4] << endl;
 
 
-    if(  peakN == 4 || peakN == 5){ // peakX[0] should be the Ti Ka channel and peakX[1] the Mn Ka channel
+    if(  peakN == 4 || peakN == 5 || peakN == 6){ // peakX[0] should be the Ti Ka channel and peakX[1] the Mn Ka channel
         if( pX[0] <= ul && pX[0] > ll ){
 	  if( pX[0] < pX[1] ){ // if Ti ka > Mn Ka (normal case)
               
@@ -2290,6 +2290,7 @@ void SDDclass::FitE2ChLine( TString source) // energy to channel line
 
     return ;
 }
+
 
 
 void SDDclass::OpenCanvas()

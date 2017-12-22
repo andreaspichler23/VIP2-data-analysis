@@ -34,6 +34,30 @@ Double_t gaussFunc(Double_t *x, Double_t *par){
     
 }
 
+Double_t tailFuncEnergy(Double_t *x, Double_t *par){
+// --- tail description ---
+// par[0] : main gauss sigma in ev
+// par[1] : Main gaus mean 
+// par[2] : Tail mean shift in eV
+// par[3] : Fano ... unused
+// par[4] : Constant noise ... unused
+// par[5] : Gaus gain
+// par[6] : Exponential beta 
+// par[7] : Tail gain ratio
+//  sigma using same fano and constant noise as main peak
+    Double_t arg = 0.;
+    //Double_t slope = ( par[0] - par[1] )/( MnKa1 - TiKa1 );
+    //Double_t sig   = sqrt( slope * ( par[1] - par[2] * slope ) * SiW * par[3] + par[4] * par[4] ); // signa in channels
+    Double_t sig = par[0];
+    arg   = (x[0] - par[1] + par[2] ) / sig / SQRT2;
+    Double_t argB1 = (x[0] - par[1] + par[2]) / sig / par[6];
+    Double_t argB2 = 1./ par[6] / SQRT2;
+    Double_t argB3 = 1./2. / par[6] / par[6];
+    Double_t norm  = 1./2. / sig / par[6] * TMath::Exp(argB3);
+    Double_t tail_func = par[5] * par[7] * norm * TMath::Exp(argB1) * TMath::Erfc( arg + argB2 );
+    return tail_func;
+}
+
 Double_t RoiCuFunc(Double_t *x, Double_t *par){
     
     // fit of the region of roi, nickel, and cu ka kb
@@ -75,6 +99,82 @@ Double_t RoiCuFunc(Double_t *x, Double_t *par){
     Double_t niKa2Mean = par[8] - 17.3;
     
     Double_t niKa2 = niKa2Gain/(sqrt(2*TMath::Pi())*par[9])*TMath::Exp(-((xx-niKa2Mean)*(xx-niKa2Mean))/(2*par[9]*par[9]));
+    
+    // par[11] = cu ka1 tail mean shift in ev
+    // par[12] = exponential beta ka
+    // par[13] = tail gain ratio
+    
+    Double_t arg = 0.;
+    Double_t sig = par[3];
+    arg   = (x[0] - par[2] + par[11] ) / sig / SQRT2;
+    Double_t argB1 = (x[0] - par[2] + par[11]) / sig / par[12];
+    Double_t argB2 = 1./ par[12] / SQRT2;
+    Double_t argB3 = 1./2. / par[12] / par[12];
+    Double_t norm  = 1./2. / sig / par[12] * TMath::Exp(argB3);
+    Double_t cuKaTailFunc = par[1] * par[13] * norm * TMath::Exp(argB1) * TMath::Erfc( arg + argB2 );
+    
+    // par[14] = exponential beta kb
+    // par[15] = tail gain ratio cu kb
+ 
+    Double_t BetaArg   = (x[0] - par[5] + par[11] ) / sig / SQRT2;
+    Double_t BetaArgB1 = (x[0] - par[5] + par[11]) / sig / par[14];
+    Double_t BetaArgB2 = 1./ par[14] / SQRT2;
+    Double_t BetaArgB3 = 1./2. / par[14] / par[14];
+    Double_t BetaNorm  = 1./2. / sig / par[14] * TMath::Exp(BetaArgB3);
+    Double_t cuKbTailFunc = par[1] * par[15] * BetaNorm * TMath::Exp(BetaArgB1) * TMath::Erfc( BetaArg + BetaArgB2 );
+    
+
+    
+    Double_t roiCuFunc = back + cuKa1 + cuKa2 + cuKb + niKa1 + niKa2 + cuKaTailFunc + cuKbTailFunc;
+    
+   
+    return roiCuFunc; 
+    
+}
+
+
+Double_t RoiCuFunc_NoTails(Double_t *x, Double_t *par){
+    
+    // fit of the region of roi, nickel, and cu ka kb
+    // this is for fitting an already scaled histogram
+    
+    
+    Double_t xx = x[0];
+    
+    //par[0] = background constant
+    //par[10] = background slope
+    
+    Double_t back = par[0] + (xx - 7000) * par[10];
+    
+    //par[1] = cu ka1 gain
+    //par[2] = cu ka1 mean
+    //par[3] = cu ka1 sigma
+    
+    Double_t cuKa1 = par[1]/(sqrt(2*TMath::Pi())*par[3])*TMath::Exp(-((xx-par[2])*(xx-par[2]))/(2*par[3]*par[3]));
+    
+    Double_t cuKa2Gain = par[1] * 0.51;
+    Double_t cuKa2Mean = par[2] - 19.95;
+    
+    Double_t cuKa2 = cuKa2Gain/(sqrt(2*TMath::Pi())*par[3])*TMath::Exp(-((xx-cuKa2Mean)*(xx-cuKa2Mean))/(2*par[3]*par[3]));
+    
+    //par[4] = cu kb gain
+    //par[5] = cu kb mean
+    //par[6] = cu kb sigma
+    
+    Double_t cuKb = par[4]/(sqrt(2*TMath::Pi())*par[6])*TMath::Exp(-((xx-par[5])*(xx-par[5]))/(2*par[6]*par[6]));
+    
+    //par[7] = ni ka1 gain
+    //par[8] = ni ka1 mean
+    //par[9] = ni ka1 sigma
+  
+    
+    Double_t niKa1 = par[7]/(sqrt(2*TMath::Pi())*par[9])*TMath::Exp(-((xx-par[8])*(xx-par[8]))/(2*par[9]*par[9]));
+    
+    Double_t niKa2Gain = par[7] * 0.51;
+    Double_t niKa2Mean = par[8] - 17.3;
+    
+    Double_t niKa2 = niKa2Gain/(sqrt(2*TMath::Pi())*par[9])*TMath::Exp(-((xx-niKa2Mean)*(xx-niKa2Mean))/(2*par[9]*par[9]));
+
     
     Double_t roiCuFunc = back + cuKa1 + cuKa2 + cuKb + niKa1 + niKa2;
     
@@ -135,6 +235,8 @@ Double_t shelfFunc(Double_t *x, Double_t *par){
     if(par[7] == 0) { slope = ( par[1] - par[0] )/( MnKa1 - TiKa1 );}
     if(par[7] == 1) { slope = ( par[1] - par[0] )/( ZrKa1 - TiKa1 );}
    Double_t sig = sqrt(slope * par[2] * SiW * par[5] + par[3] * par[3]);
+   
+   
 
    shelf = par[4] * par[6] * (1./2) * TMath::Erfc( (x[0]-par[5])/(sqrt(2)*sig) ); // 1/2 because erfc would be 2 normally on the left side
 
@@ -1361,4 +1463,237 @@ Double_t TiCuZrFullFitFunc(Double_t *x, Double_t *par)
 Double_t peakLine(Double_t *x, Double_t *par){
     Double_t calib_line = par[0] + par[1] * x[0];
     return calib_line;
+}
+
+
+Double_t TiMnCuFullFitFunc_Energy(Double_t *x, Double_t *par)
+{   
+    Double_t timncu_function = 0.;
+    Double_t arg[33] = {0.};    
+    
+//    par0 = tika1sig
+//    par1 = tikbsig
+//    par2 = mnka1sig
+//    par3 = mnkbsig
+//    par4 = background constant
+//    
+//    par5 = tika1
+//    par6 = tika1 gain
+//    par7 = tikb
+//    par8 = tika to ti kb ratio
+//    par[9] = mnka1
+//    par10 = mnka1 gain
+//    par11 = mnkb
+//    par12 = mn ka to kb ratio
+//    par13 = escape gain
+//    par14 = tail mean shift mn and ti
+//    par15 = ti ka tail gain ratio
+//    par16 = ti kb tail gain ratio
+//    par17 = mn ka tail gain ratio
+//    par18 = mn kb tail gain ratio
+//    par[19]=tail beta slope ti     
+//    par[20]=tail beta slope mn and cu
+//    par21 = shelf gain
+//    par 22 = cuka1
+//    par23 = cuka1 gain       
+//    par24 = cukb
+//    par25 = ratio cu ka to kb
+//    par26 = tail gain cuka
+//    par27 = sigcuka
+//    par[28] = sigcukb
+            
+
+    //Double_t slope         = (par[9] - par[5])/(MnKa1 - TiKa1); // par[9] = init_mean_mn; par[5]=init_mean_ti; slope in ch / eV  
+
+    Double_t mnka2m        = par[9] - (MnKa1 - MnKa2); // mn ka2 start value channel
+    Double_t mnka1e        = par[9] - SiKa; // channel with a mnka1 photon absorbed by Si -> lost energy not recorded
+    Double_t mnka2e        = mnka2m - SiKa; // same for mn-ka2
+    Double_t mnkbe         = par[11]- SiKa; // par[11]=init_mean_mnkb, same for mn-kb
+   // Double_t pmnka1m       = par[9] + par[15] * slope; // par[15]=pileup mean shift in eV (60 eV), peak shift due to pulse pile up - at our rate prob = 0 
+   // Double_t pmnka2m       = mnka2m + par[15] * slope; // same for mn-ka2
+   // Double_t pmnkbm        = par[11]+ par[15] * slope; // same for mn-kb
+    Double_t tmnka1m       = par[9] - par[14]; // par[14]=Tail mean shift [eV]
+    Double_t tmnka2m       = mnka2m - par[14]; // same for mn-ka2
+    Double_t tmnkbm        = par[11]- par[14]; // same for mn-kb
+
+    Double_t sig_MnKa1     = par[2]; // SiW = ionization energy of Si @ 77 Kelvin = 3.81 eV; par[3]=fano factor; par[4]= constant noise; 8.15 eV should be ionization energy of Si; the band gap is 1.16 eV?? -> formula is true bc: var(Ne)=F*Ne; sigma(Ch)=slope*Eion*sigma(Ne); var=sigma^2; 
+    Double_t sig_MnKa2     = par[2]; 
+    Double_t sig_MnKb      = par[3];
+    Double_t sig_MnKa1e    = par[2] - 20 ;
+    Double_t sig_MnKa2e    = par[2] - 20 ;
+    Double_t sig_MnKbe     = par[3] - 20;
+  //  Double_t sig_pMnKa1    = par[18] * sqrt( slope * pmnka1m* SiW * par[3] + par[4] * par[4] ); // par[18] is sigma broadening of pileup
+  //  Double_t sig_pMnKa2    = par[18] * sqrt( slope * pmnka2m* SiW * par[3] + par[4] * par[4] );
+  //  Double_t sig_pMnKb     = par[18] * sqrt( slope * pmnkbm * SiW * par[3] + par[4] * par[4] );
+    Double_t sig_tMnKa1    = par[2];
+    Double_t sig_tMnKa2    = par[2];
+    Double_t sig_tMnKb     = par[3];
+
+    Double_t tika2m        = par[5] - (TiKa1 - TiKa2);           // TiKa2 mean channel    
+    Double_t tika1e        = par[5] - SiKa;
+    Double_t tika2e        = tika2m - SiKa;
+    Double_t tikbe         = par[7] - SiKa; // par[7]=Ti-Kb channel
+  //  Double_t ptika1m       = par[5] + par[15] * slope * 0.8;             // added 0.8 factor 23/02/2010
+  //  Double_t ptika2m       = tika2m + par[15] * slope * 0.8;
+  //  Double_t ptikbm        = par[7] + par[15] * slope * 0.8;
+    Double_t ttika1m       = par[5] - par[14];
+    Double_t ttika2m       = tika2m - par[14];
+    Double_t ttikbm        = par[7] - par[14];
+
+    Double_t sig_TiKa1     = par[0];
+    Double_t sig_TiKa2     = par[0];
+    Double_t sig_TiKb      = par[1];
+    Double_t sig_TiKa1e    = par[0] - 20;
+    Double_t sig_TiKa2e    = par[0] - 20;
+    Double_t sig_TiKbe     = par[1] - 20;
+ //   Double_t sig_pTiKa1    = par[18] * sqrt( slope * ptika1m* SiW * par[3] + par[4] * par[4] );
+ //   Double_t sig_pTiKa2    = par[18] * sqrt( slope * ptika2m* SiW * par[3] + par[4] * par[4] );
+ //   Double_t sig_pTiKb     = par[18] * sqrt( slope * ptikbm * SiW * par[3] + par[4] * par[4] );
+    Double_t sig_tTiKa1    = par[0];
+    Double_t sig_tTiKa2    = par[0];
+    Double_t sig_tTiKb     = par[1];
+
+    Double_t cuka2m        = par[22] - (CuKa1 - CuKa2); // cu ka2 start value channel
+    Double_t cuka1e        = par[22] - SiKa; // channel with a cuka1 photon absorbed by Si -> lost energy not recorded
+    Double_t cuka2e        = cuka2m - SiKa; // same for cu-ka2
+    Double_t cukbe         = par[24]- SiKa; // par[24]=init_mean_cukb, same for cu-kb
+    Double_t tcuka1m       = par[22] - par[14]; // par[14]=Tail mean shift [eV]
+    Double_t tcuka2m       = mnka2m - par[14]; // same for cu-ka2
+    Double_t tcukbm        = par[24]- par[14]; // same for cu-kb
+
+    Double_t sig_CuKa1     = par[27]; // SiW = ionization energy of Si @ 77 Kelvin = 3.81 eV; par[3]=fano factor; par[4]= constant noise; 8.15 eV should be ionization energy of Si; the band gap is 1.16 eV?? -> formula is true bc: var(Ne)=F*Ne; sigma(Ch)=slope*Eion*sigma(Ne); var=sigma^2; 
+    Double_t sig_CuKa2     = par[27]; 
+    Double_t sig_CuKb      = par[28];
+    Double_t sig_CuKa1e    = par[27] - 20;
+    Double_t sig_CuKa2e    = par[27] - 20;
+    Double_t sig_CuKbe     = par[28] - 20;
+
+    Double_t sig_tCuKa1    = par[27];
+    Double_t sig_tCuKa2    = par[27];
+    Double_t sig_tCuKb     = par[28];
+
+    if( sig_TiKa1 * sig_TiKa2 * sig_TiKb * sig_MnKa1 * sig_MnKa2 * sig_MnKb 
+            * sig_CuKa1 * sig_CuKa2 * sig_CuKb 
+            * sig_tTiKa1 * sig_tTiKa2 * sig_tTiKb * sig_tMnKa1 * sig_tMnKa2 * sig_tMnKb  
+            * sig_MnKa1e * sig_MnKa2e * sig_MnKbe * sig_TiKa1e * sig_TiKa2e * sig_TiKbe 
+            != 0){
+       
+        arg[0]  = (x[0] - par[5])/sig_TiKa1;
+        arg[1]  = (x[0] - tika2m)/sig_TiKa2;
+        arg[2]  = (x[0] - par[7])/sig_TiKb;
+        arg[21] = (x[0] - tika1e)/sig_TiKa1e;   // Escape peak
+        arg[22] = (x[0] - tika2e)/sig_TiKa2e;
+        arg[23] = (x[0] - tikbe)/sig_TiKbe;
+        
+        arg[3]  = (x[0] - par[9])/sig_MnKa1;
+        arg[4]  = (x[0] - mnka2m)/sig_MnKa2;
+        arg[5]  = (x[0] - par[11])/sig_MnKb;
+        arg[6]  = (x[0] - mnka1e)/sig_MnKa1e;  // Escape peak
+        arg[7]  = (x[0] - mnka2e)/sig_MnKa2e;
+        arg[20] = (x[0] - mnkbe) /sig_MnKbe;
+
+        arg[24]  = (x[0] - par[22])/sig_CuKa1; // cu ka1
+        arg[25]  = (x[0] - cuka2m)/sig_CuKa2;
+        arg[26]  = (x[0] - par[24])/sig_CuKb;
+        arg[27]  = (x[0] - cuka1e)/sig_CuKa1e;  // Escape peak
+        arg[28]  = (x[0] - cuka2e)/sig_CuKa2e;
+        arg[29] = (x[0] - cukbe) /sig_CuKbe;
+
+        arg[11] = (x[0] - ttika1m)/sig_tTiKa1/SQRT2;
+        Double_t argtika1B1 = (x[0] - ttika1m)/sig_tTiKa1/par[19]; //par[19]=tail beta slope
+        Double_t argtika1B2 = 1./par[19]/SQRT2;
+        Double_t argtika1B3 = 1./2./par[19]/par[19];
+        Double_t normtika1  = 1./2./sig_tTiKa1/par[19]*TMath::Exp(argtika1B3);
+        arg[12] = (x[0] - ttika2m)/sig_tTiKa2/SQRT2;
+        Double_t argtika2B1 = (x[0] - ttika2m)/sig_tTiKa2/par[19];
+        Double_t argtika2B2 = 1./par[19]/SQRT2;
+        Double_t argtika2B3 = 1./2./par[19]/par[19];
+        Double_t normtika2  = 1./2./sig_tTiKa2/par[19]*TMath::Exp(argtika2B3);
+        arg[13] = (x[0] - ttikbm) /sig_tTiKb/SQRT2;
+        Double_t argtikbB1 = (x[0] - ttikbm)/sig_tTiKb/par[19];
+        Double_t argtikbB2 = 1./par[19]/SQRT2;
+        Double_t argtikbB3 = 1./2./par[19]/par[19];
+        Double_t normtikb  = 1./2./sig_tTiKb/par[19]*TMath::Exp(argtikbB3);
+/*
+        arg[14] = (x[0] - pmnka1m)/sig_pMnKa1;
+        arg[15] = (x[0] - pmnka2m)/sig_pMnKa2;
+        arg[16] = (x[0] - pmnkbm) /sig_pMnKb;
+*/
+        arg[17] = (x[0] - tmnka1m)/sig_tMnKa1/SQRT2;
+        Double_t argmnka1B1 = (x[0] - tmnka1m)/sig_tMnKa1/par[20];
+        Double_t argmnka1B2 = 1./par[20]/SQRT2;
+        Double_t argmnka1B3 = 1./2./par[20]/par[20];
+        Double_t normmnka1  = 1./2./sig_tMnKa1/par[20]*TMath::Exp(argmnka1B3);
+        arg[18] = (x[0] - tmnka2m)/sig_tMnKa2/SQRT2;
+        Double_t argmnka2B1 = (x[0] - tmnka2m)/sig_tMnKa2/par[20];
+        Double_t argmnka2B2 = 1./par[20]/SQRT2;
+        Double_t argmnka2B3 = 1./2./par[20]/par[20];
+        Double_t normmnka2  = 1./2./sig_tMnKa2/par[20]*TMath::Exp(argmnka2B3);
+        arg[19] = (x[0] - tmnkbm) /sig_tMnKb/SQRT2;
+        Double_t argmnkbB1 = (x[0] - tmnkbm)/sig_tMnKb/par[20];
+        Double_t argmnkbB2 = 1./par[20]/SQRT2;
+        Double_t argmnkbB3 = 1./2./par[20]/par[20];
+        Double_t normmnkb  = 1./2./sig_tMnKb/par[20]*TMath::Exp(argmnkbB3);
+
+
+        arg[30] = (x[0] - tcuka1m)/sig_tCuKa1/SQRT2;
+        Double_t argcuka1B1 = (x[0] - tcuka1m)/sig_tCuKa1/par[20];
+        Double_t argcuka1B2 = 1./par[20]/SQRT2;
+        Double_t argcuka1B3 = 1./2./par[20]/par[20];
+        Double_t normcuka1  = 1./2./sig_tCuKa1/par[20]*TMath::Exp(argcuka1B3);
+        arg[31] = (x[0] - tcuka2m)/sig_tCuKa2/SQRT2;
+        Double_t argcuka2B1 = (x[0] - tcuka2m)/sig_tCuKa2/par[20];
+        Double_t argcuka2B2 = 1./par[20]/SQRT2;
+        Double_t argcuka2B3 = 1./2./par[20]/par[20];
+        Double_t normcuka2  = 1./2./sig_tCuKa2/par[20]*TMath::Exp(argcuka2B3);
+        arg[32] = (x[0] - tcukbm) /sig_tCuKb/SQRT2;
+        Double_t argcukbB1 = (x[0] - tcukbm)/sig_tCuKb/par[20];
+        Double_t argcukbB2 = 1./par[20]/SQRT2;
+        Double_t argcukbB3 = 1./2./par[20]/par[20];
+        Double_t normcukb  = 1./2./sig_tCuKb/par[20]*TMath::Exp(argcukbB3);
+
+
+        
+        timncu_function = //backFunc(x,par)
+            par[4]
+            + par[6]  / sig_TiKa1* TMath::Exp(-0.5 * arg[0] * arg[0]) //par[6] = ti ka1 gain   Ti ka1 gauss
+            + TiKa2_RI/ TiKa1_RI * par[6] / sig_TiKa2 * TMath::Exp(-0.5 * arg[1] * arg[1]) // 100/50 for ti
+            + par[8]  * par[6]   / sig_TiKb * TMath::Exp(-0.5 * arg[2] * arg[2]) // par[8]=ti kb to ka gain ratio
+            + par[6]  * par[15]  * normtika1 * TMath::Exp(argtika1B1) * TMath::Erfc(arg[11] + argtika1B2)// par[15]=ti tail gain ratio ka1
+            + par[6]  * par[15]  * TiKa2_RI / TiKa1_RI * normtika2 * TMath::Exp(argtika2B1) * TMath::Erfc(arg[12] + argtika2B2) // ka2
+            + par[6]  * par[16]  * par[8] * normtikb * TMath::Exp(argtikbB1) * TMath::Erfc(arg[13] + argtikbB2) // kb
+
+            + par[10] / sig_MnKa1* TMath::Exp(-0.5 * arg[3] * arg[3]) // par[10] = mn ka1 gain
+            + MnKa2_RI/ MnKa1_RI * par[10] / sig_MnKa2 * TMath::Exp(-0.5 * arg[4] * arg[4])
+            + par[12] * par[10]  / sig_MnKb * TMath::Exp(-0.5 * arg[5] * arg[5]) // par[12]=mn kb to ka gain ratio (0.7 in one fit for lngs)
+            + par[10] * par[17]  * normmnka1 * TMath::Exp(argmnka1B1) * TMath::Erfc(arg[17] + argmnka1B2)
+            + par[10] * par[17]  * MnKa2_RI / MnKa1_RI * normmnka2 * TMath::Exp(argmnka2B1) * TMath::Erfc(arg[18] + argmnka2B2)
+            + par[10] * par[18]  * par[12] * normmnkb * TMath::Exp(argmnkbB1) * TMath::Erfc(arg[19] + argmnkbB2) 
+
+            + par[23] / sig_CuKa1* TMath::Exp(-0.5 * arg[24] * arg[24]) // cu ka1 peak
+            + CuKa2_RI/ CuKa1_RI * par[23] / sig_CuKa2 * TMath::Exp(-0.5 * arg[25] * arg[25]) // cu ka2
+            + par[25] * par[23]  / sig_CuKb * TMath::Exp(-0.5 * arg[26] * arg[26]) // par[12]=mn kb to ka gain ratio (0.7 in one fit for lngs) - cu kb
+            + par[23] * par[26]  * normcuka1 * TMath::Exp(argcuka1B1) * TMath::Erfc(arg[30] + argcuka1B2) // cu ka1 tail
+            + par[23] * par[26]  * CuKa2_RI / CuKa1_RI * normcuka2 * TMath::Exp(argcuka2B1) * TMath::Erfc(arg[31] + argcuka2B2) // cu ka2 tail
+            + par[23] * par[25]  * par[26] * normcukb * TMath::Exp(argcukbB1) * TMath::Erfc(arg[32] + argcukbB2) // cu kb tail
+
+            + par[13] * par[10]  / sig_MnKa1e * TMath::Exp(-0.5 * arg[6] * arg[6]) // Escape peak ... mn ka1
+            + par[13] * par[10]  / sig_MnKa2e * TMath::Exp(-0.5 * arg[7] * arg[7]) // mn ka 2
+            + par[13] * par[10]  / sig_MnKbe  * TMath::Exp(-0.5 * arg[20]* arg[20]) // mn kb
+
+
+            + par[13] * par[6]  / sig_TiKa1e * TMath::Exp(-0.5 * arg[21] * arg[21]) // escape peak ti ka1
+            + par[13] * par[6]  / sig_TiKa2e * TMath::Exp(-0.5 * arg[22] * arg[22]) // ka2
+            + par[13] * par[6]  / sig_TiKbe  * TMath::Exp(-0.5 * arg[23] * arg[23]) // kb
+
+            + par[21] * par[10] * (1./2) * TMath::Erfc( (x[0]-par[9])/(SQRT2*sig_MnKa1) ) // mn ka1 shelf
+            + par[21] * MnKa2_RI/ MnKa1_RI * par[10] * (1./2) * TMath::Erfc( (x[0]-mnka2m)/(SQRT2*sig_MnKa2) ) // ka2
+            + par[21] * par[12] * par[10] * (1./2) * TMath::Erfc( (x[0]-par[11])/(SQRT2*sig_MnKb) ) // kb
+ 
+            + par[21] * par[6] * (1./2) * TMath::Erfc( (x[0]-par[5])/(SQRT2*sig_TiKa1) ) // ti ka1 shelf
+            + par[21] * TiKa2_RI/ TiKa1_RI * par[6] * (1./2) * TMath::Erfc( (x[0]-tika2m)/(SQRT2*sig_TiKa2) )
+            + par[21] * par[8] * par[6] * (1./2) * TMath::Erfc( (x[0]-par[7])/(SQRT2*sig_TiKb) );
+
+    }
+    return timncu_function;
 }
